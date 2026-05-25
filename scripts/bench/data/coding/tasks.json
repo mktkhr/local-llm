@@ -1,0 +1,81 @@
+[
+  {
+    "task_id": "impl_001",
+    "task_type": "impl",
+    "function_name": "add",
+    "prompt": "Python の関数 `add(a, b)` を実装してください。2 つの数値を受け取り、その和を返してください。コードのみを ```python フェンスで返してください。説明や使用例は不要です。",
+    "tests": [
+      { "args": [1, 2], "expected": 3 },
+      { "args": [-1, 5], "expected": 4 },
+      { "args": [0, 0], "expected": 0 },
+      { "args": [-10, -20], "expected": -30 }
+    ]
+  },
+  {
+    "task_id": "impl_002",
+    "task_type": "impl",
+    "function_name": "fib",
+    "prompt": "Python の関数 `fib(n)` を実装してください。非負整数 n を受け取り、フィボナッチ数列の n 番目の値を返してください。fib(0)=0, fib(1)=1, fib(2)=1, fib(3)=2, ... となります。コードのみを ```python フェンスで返してください。説明や使用例は不要です。",
+    "tests": [
+      { "args": [0], "expected": 0 },
+      { "args": [1], "expected": 1 },
+      { "args": [2], "expected": 1 },
+      { "args": [5], "expected": 5 },
+      { "args": [10], "expected": 55 },
+      { "args": [15], "expected": 610 }
+    ]
+  },
+  {
+    "task_id": "bugfix_001",
+    "task_type": "bugfix",
+    "function_name": "factorial",
+    "prompt": "以下の `factorial(n)` 関数にはバグがあります。非負整数 n の階乗を返すべきですが、現状は誤った値を返します。修正したコード全体を ```python フェンスで返してください。\n\n```python\ndef factorial(n):\n    result = 1\n    for i in range(n):\n        result *= i\n    return result\n```",
+    "tests": [
+      { "args": [0], "expected": 1 },
+      { "args": [1], "expected": 1 },
+      { "args": [3], "expected": 6 },
+      { "args": [5], "expected": 120 },
+      { "args": [7], "expected": 5040 }
+    ]
+  },
+  {
+    "task_id": "bugfix_002",
+    "task_type": "bugfix",
+    "function_name": "count_vowels",
+    "prompt": "以下の `count_vowels(s)` は英小文字の母音(a, e, i, o, u)の個数を数えるべきですが、バグがあります。修正したコード全体を ```python フェンスで返してください。\n\n```python\ndef count_vowels(s):\n    vowels = \"aeiou\"\n    count = 0\n    for ch in s:\n        if ch in vowels:\n            count = count\n    return count\n```",
+    "tests": [
+      { "args": ["hello"], "expected": 2 },
+      { "args": ["aeiou"], "expected": 5 },
+      { "args": ["xyz"], "expected": 0 },
+      { "args": [""], "expected": 0 },
+      { "args": ["programming"], "expected": 3 }
+    ]
+  },
+  {
+    "task_id": "refactor_001",
+    "task_type": "refactor",
+    "function_name": "classify_age",
+    "prompt": "以下のネストした if 文の関数を、機能を変えずに読みやすくリファクタしてください。コード全体を ```python フェンスで返してください。\n\n```python\ndef classify_age(age):\n    result = \"\"\n    if age < 0:\n        result = \"invalid\"\n    else:\n        if age < 13:\n            result = \"child\"\n        else:\n            if age < 18:\n                result = \"teen\"\n            else:\n                if age < 65:\n                    result = \"adult\"\n                else:\n                    result = \"senior\"\n    return result\n```",
+    "tests": [
+      { "args": [-1], "expected": "invalid" },
+      { "args": [5], "expected": "child" },
+      { "args": [12], "expected": "child" },
+      { "args": [15], "expected": "teen" },
+      { "args": [30], "expected": "adult" },
+      { "args": [64], "expected": "adult" },
+      { "args": [70], "expected": "senior" }
+    ]
+  },
+  {
+    "task_id": "refactor_002",
+    "task_type": "refactor",
+    "function_name": "squares_of_evens",
+    "prompt": "以下の関数をリスト内包表記を用いてリファクタしてください。機能(偶数の二乗のリストを返す)は変えないこと。コード全体を ```python フェンスで返してください。\n\n```python\ndef squares_of_evens(numbers):\n    result = []\n    for n in numbers:\n        if n % 2 == 0:\n            result.append(n * n)\n    return result\n```",
+    "tests": [
+      { "args": [[1, 2, 3, 4]], "expected": [4, 16] },
+      { "args": [[]], "expected": [] },
+      { "args": [[2, 4, 6]], "expected": [4, 16, 36] },
+      { "args": [[1, 3, 5]], "expected": [] }
+    ]
+  }
+]

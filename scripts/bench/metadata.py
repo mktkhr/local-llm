@@ -55,6 +55,25 @@ def _os_info() -> dict[str, str]:
     }
 
 
+def _ollama_env() -> dict[str, str]:
+    """systemctl 経由で Ollama に渡されている OLLAMA_* 環境変数を採取する。
+
+    KV 量子化を振った計測などで結果に「どの KV だったか」を残すために必要。
+    Ollama が systemd 経由で起動されていない場合は空 dict を返す。
+    """
+    out = _run(["systemctl", "show", "ollama", "-p", "Environment"])
+    if not out.startswith("Environment="):
+        return {}
+    env: dict[str, str] = {}
+    for tok in out[len("Environment=") :].split():
+        if "=" not in tok:
+            continue
+        key, val = tok.split("=", 1)
+        if key.startswith("OLLAMA_"):
+            env[key] = val
+    return env
+
+
 def _git_hash(repo_dir: Path) -> str:
     return _run(["git", "-C", str(repo_dir), "rev-parse", "--short", "HEAD"])
 
@@ -63,6 +82,7 @@ def _git_hash(repo_dir: Path) -> str:
 class Metadata:
     timestamp: str
     ollama_version: str
+    ollama_env: dict[str, str]
     gpu: dict[str, str]
     os: dict[str, str]
     git_hash: str
@@ -79,6 +99,7 @@ def collect(repo_dir: Path | None = None, extra: dict[str, Any] | None = None) -
     return Metadata(
         timestamp=datetime.now().astimezone().isoformat(timespec="seconds"),
         ollama_version=_ollama_version(),
+        ollama_env=_ollama_env(),
         gpu=_nvidia_info(),
         os=_os_info(),
         git_hash=_git_hash(repo_dir),

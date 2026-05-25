@@ -32,15 +32,11 @@ DEFAULT_MODELS = [
 ]
 
 
+KV_OPTIONS = ["q8_0", "q4_0", "f16"]
+
+
 def sanitize(model: str) -> str:
     return model.replace(":", "_").replace("/", "_")
-
-
-def find_latest(results_dir: Path, pattern: str) -> Path | None:
-    matches = list(results_dir.rglob(pattern))
-    if not matches:
-        return None
-    return max(matches, key=lambda p: p.stat().st_mtime)
 
 
 def load_json(path: Path | None) -> dict[str, Any] | None:
@@ -52,15 +48,52 @@ def load_json(path: Path | None) -> dict[str, Any] | None:
         return None
 
 
-def collect_for_model(results_dir: Path, model: str) -> dict[str, Any]:
-    s = sanitize(model)
-    row: dict[str, Any] = {"model": model}
+def _kv_for_result(result_file: Path) -> str:
+    """同じディレクトリの metadata.json から KV キャッシュタイプを取得する。
 
-    if (d := load_json(find_latest(results_dir, f"ctx_search_{s}.json"))) is not None:
+    ollama_env が記録されていない古い結果は q8_0 とみなす(初回スイープが
+    q8_0 で行われたため)。ollama_env はあるが KV キーが無い場合は Ollama
+    既定の f16 とみなす。
+    """
+    meta_file = result_file.parent / "metadata.json"
+    d = load_json(meta_file)
+    if d is None:
+        return "q8_0"
+    env = d.get("ollama_env")
+    if not env:
+        return "q8_0"
+    return env.get("OLLAMA_KV_CACHE_TYPE", "f16")
+
+
+def find_latest(results_dir: Path, pattern: str) -> Path | None:
+    matches = list(results_dir.rglob(pattern))
+    if not matches:
+        return None
+    return max(matches, key=lambda p: p.stat().st_mtime)
+
+
+def find_latest_with_kv(results_dir: Path, pattern: str, kv: str) -> Path | None:
+    matches = [f for f in results_dir.rglob(pattern) if _kv_for_result(f) == kv]
+    if not matches:
+        return None
+    return max(matches, key=lambda p: p.stat().st_mtime)
+
+
+def _populate_from_files(
+    row: dict[str, Any],
+    model: str,
+    finder,
+    s: str,
+) -> dict[str, Any]:
+    """ctx_search / speed / needle / coding / summary の最新ファイルから値を入れる。
+
+    finder は (pattern: str) -> Path | None のコールバック。
+    """
+    if (d := load_json(finder(f"ctx_search_{s}.json"))) is not None:
         row["max_ctx"] = d.get("max_ctx")
         row["ctx_search_probes"] = len(d.get("history", []))
 
-    if (d := load_json(find_latest(results_dir, f"speed_{s}_ctx*.json"))) is not None:
+    if (d := load_json(finder(f"speed_{s}_ctx*.json"))) is not None:
         row["decode_tps"] = d.get("decode_tokens_per_sec")
         row["prefill_tps"] = d.get("prefill_tokens_per_sec")
         row["ttft_sec"] = d.get("ttft_sec")
@@ -68,26 +101,42 @@ def collect_for_model(results_dir: Path, model: str) -> dict[str, Any]:
         row["vram_free_mib"] = d.get("vram_min_free_mib")
         row["gpu_util_pct"] = d.get("gpu_mean_utilization_pct")
         row["requested_ctx"] = d.get("num_ctx")
-        # ollama ps の context_length が「実効 ctx」。Ollama がモデル上限でキャップ
-        # した場合は要求値より小さくなる(例: gemma4 で 262144 要求 → 131072)。
         ps = d.get("ollama_ps_after_load") or []
         for entry in ps:
             if entry.get("name") == model or entry.get("model") == model:
                 row["effective_ctx"] = entry.get("context_length")
                 break
 
-    if (d := load_json(find_latest(results_dir, f"needle_{s}_ctx*.json"))) is not None:
+    if (d := load_json(finder(f"needle_{s}_ctx*.json"))) is not None:
         row["needle_success"] = d.get("success")
         row["needle_position_pct"] = d.get("position_pct")
 
-    if (d := load_json(find_latest(results_dir, f"coding_{s}_ctx*.json"))) is not None:
+    if (d := load_json(finder(f"coding_{s}_ctx*.json"))) is not None:
         row["coding_pass_rate"] = d.get("overall_pass_rate")
         row["coding_by_type"] = d.get("by_task_type", {})
 
-    if (d := load_json(find_latest(results_dir, f"summary_{s}_ctx*.json"))) is not None:
+    if (d := load_json(finder(f"summary_{s}_ctx*.json"))) is not None:
         row["summary_match_rate"] = d.get("overall_match_rate")
 
     return row
+
+
+def collect_for_model(results_dir: Path, model: str) -> dict[str, Any]:
+    """KV 種別を問わず、最新の計測結果をまとめる(旧来の挙動)。"""
+    s = sanitize(model)
+    row: dict[str, Any] = {"model": model}
+    return _populate_from_files(
+        row, model, lambda pat: find_latest(results_dir, pat), s
+    )
+
+
+def collect_for_model_kv(results_dir: Path, model: str, kv: str) -> dict[str, Any]:
+    """指定 KV(q8_0 / q4_0 / f16)に絞って最新の計測結果をまとめる。"""
+    s = sanitize(model)
+    row: dict[str, Any] = {"model": model, "kv": kv}
+    return _populate_from_files(
+        row, model, lambda pat: find_latest_with_kv(results_dir, pat, kv), s
+    )
 
 
 def _fmt(v: Any) -> str:
@@ -182,6 +231,55 @@ def format_coding_breakdown(rows: list[dict[str, Any]]) -> str:
     return "\n".join(out)
 
 
+def format_kv_comparison_table(rows: list[dict[str, Any]]) -> str:
+    """KV ごとに 1 行ずつ並べた縦長の比較表。"""
+    headers = [
+        "Model",
+        "KV",
+        "Max ctx",
+        "Decode tok/s",
+        "Prefill tok/s",
+        "TTFT (s)",
+        "VRAM peak (MiB)",
+        "VRAM free (MiB)",
+        "Needle",
+    ]
+    out = ["| " + " | ".join(headers) + " |"]
+    out.append("| " + " | ".join(["---"] * len(headers)) + " |")
+    for r in rows:
+        # ctx_search と effective_ctx の小さい方
+        cs = r.get("max_ctx")
+        eff = r.get("effective_ctx")
+        if cs is not None and eff is not None:
+            max_ctx_val = min(cs, eff)
+            capped = eff < cs
+        elif eff is not None:
+            max_ctx_val = eff
+            capped = False
+        else:
+            max_ctx_val = cs
+            capped = False
+        max_ctx_str = f"{_fmt(max_ctx_val)}{' *' if capped else ''}"
+        out.append(
+            "| "
+            + " | ".join(
+                [
+                    r.get("model", ""),
+                    r.get("kv", ""),
+                    max_ctx_str,
+                    _fmt(r.get("decode_tps")),
+                    _fmt(r.get("prefill_tps")),
+                    _fmt(r.get("ttft_sec")),
+                    _fmt(r.get("vram_peak_mib")),
+                    _fmt(r.get("vram_free_mib")),
+                    _fmt(r.get("needle_success")),
+                ]
+            )
+            + " |"
+        )
+    return "\n".join(out)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("models", nargs="*", default=None)
@@ -190,12 +288,36 @@ def main() -> None:
         type=Path,
         default=Path(__file__).parent / "results",
     )
+    parser.add_argument(
+        "--compare-kv",
+        action="store_true",
+        help="KV(q8_0 / q4_0 / f16)横並びの比較表を出力する",
+    )
+    parser.add_argument(
+        "--kv",
+        choices=KV_OPTIONS,
+        help="指定 KV のみで集計(--compare-kv と排他)",
+    )
     args = parser.parse_args()
 
     models = args.models or DEFAULT_MODELS
-    rows = [collect_for_model(args.results_dir, m) for m in models]
 
-    print("## Main table")
+    if args.compare_kv:
+        rows: list[dict[str, Any]] = []
+        for m in models:
+            for kv in KV_OPTIONS:
+                rows.append(collect_for_model_kv(args.results_dir, m, kv))
+        print("## KV comparison")
+        print()
+        print(format_kv_comparison_table(rows))
+        return
+
+    if args.kv:
+        rows = [collect_for_model_kv(args.results_dir, m, args.kv) for m in models]
+        print(f"## Main table (KV={args.kv})")
+    else:
+        rows = [collect_for_model(args.results_dir, m) for m in models]
+        print("## Main table")
     print()
     print(format_main_table(rows))
     print()

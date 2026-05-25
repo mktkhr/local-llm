@@ -1,0 +1,12 @@
+# Codex CLI 等の中間出力
+.ai-out/
+
+# rulesync 生成物(.rulesync/ をソースに自動生成。直接整形しない)
+.claude/
+.codex/
+.cline/
+.clinerules/
+AGENTS.md
+
+# デザインバイナリ(prettier対象外だが念のため明示)
+design/**/*.pen

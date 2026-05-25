@@ -1,0 +1,5 @@
+# 認証ゲートの実トークン
+deploy/auth-gate/.env
+
+# prettier 中間生成物
+.ai-out/

@@ -1,0 +1,41 @@
+services:
+  caddy:
+    image: caddy:2.11.3-alpine
+    container_name: ollama-auth-gate
+    restart: unless-stopped
+    # ホストネットワークに直結。Caddy が :4180 で待ち受け、
+    # 同じホスト上の think-injector (127.0.0.1:11500) を経由して Ollama に届ける。
+    network_mode: host
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+      - caddy-logs:/var/log/caddy
+    environment:
+      # クライアント側と共有する固定 API トークン
+      OLLAMA_API_TOKEN: ${OLLAMA_API_TOKEN:?set OLLAMA_API_TOKEN in .env}
+    depends_on:
+      think-injector:
+        condition: service_healthy
+
+  think-injector:
+    build: ./think-injector
+    container_name: ollama-think-injector
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      UPSTREAM: "http://127.0.0.1:11434"
+      LISTEN_PORT: "11500"
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'python -c "import socket; s=socket.socket(); s.settimeout(1); s.connect((''127.0.0.1'',11500))"'
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  caddy-data:
+  caddy-config:
+  caddy-logs:

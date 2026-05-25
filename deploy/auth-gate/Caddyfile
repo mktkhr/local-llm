@@ -1,0 +1,41 @@
+{
+	# frps 側で TLS 終端する前提なので、ここでは自動 HTTPS を無効化
+	auto_https off
+	# 管理 API は無効化(攻撃面削減)
+	admin off
+}
+
+:4180 {
+	# X-Api-Key ヘッダーが env のトークンと完全一致する場合のみ通す
+	# (Authorization は前段のリバースプロキシで Basic Auth として解釈される
+	#  ことがあり、Bearer トークンが弾かれるため、独自ヘッダーを採用)
+	@authorized header X-Api-Key "{env.OLLAMA_API_TOKEN}"
+
+	handle @authorized {
+		# think-injector を経由して Ollama へ。injector が Host を
+		# 127.0.0.1:11434 に書き換えるため、ここでは Host を明示しない。
+		reverse_proxy http://127.0.0.1:11500 {
+			header_up X-Real-IP {remote_host}
+			# Ollama のロード/生成は秒〜分単位かかるので長めに
+			transport http {
+				read_timeout 10m
+				write_timeout 10m
+			}
+		}
+	}
+
+	# それ以外は 401(認証失敗)
+	handle {
+		respond "Unauthorized" 401 {
+			close
+		}
+	}
+
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 10MB
+			roll_keep 5
+		}
+		format json
+	}
+}

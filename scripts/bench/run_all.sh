@@ -72,7 +72,9 @@ for M in "${MODELS[@]}"; do
   echo
   echo "[3/5] needle @ depth=100% pos=50%"
   NEEDLE="data/needle/${SANITIZED}_d100_p50.json"
-  uv run python data/needle/generate.py --chars "$CTX" --position-pct 0.5 \
+  # 質問文 + トークナイズ余白で末尾が削れるため chars は ctx の 90% を狙う
+  NEEDLE_CHARS=$(( CTX * 9 / 10 ))
+  uv run python data/needle/generate.py --chars "$NEEDLE_CHARS" --position-pct 0.5 \
       --output "$NEEDLE"
   uv run python run_needle.py --model "$M" --ctx "$CTX" --needle "$NEEDLE"
 

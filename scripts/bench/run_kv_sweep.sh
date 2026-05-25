@@ -74,10 +74,10 @@ for M in "${MODELS[@]}"; do
   echo
   echo "[3/3] needle @ depth=100% pos=50%"
   NEEDLE="data/needle/${SANITIZED}_kv${KV}_d100_p50.json"
-  # Gemma4 系は ollama 側で 131072 にキャップされることを考慮し、chars は ctx と
-  # ollama ps から得た effective ctx の小さい方を使うのが理想だが、ここは簡略化
-  # で ctx を採用(Gemma4 で needle が外れたら後段の解析で再走)
-  uv run python data/needle/generate.py --chars "$CTX" --position-pct 0.5 \
+  # 質問文 + トークナイズの余白を持たせるため ctx の 90% を狙う(chars==ctx だと
+  # 末尾が切り詰められて needle が落ちることがある)
+  NEEDLE_CHARS=$(( CTX * 9 / 10 ))
+  uv run python data/needle/generate.py --chars "$NEEDLE_CHARS" --position-pct 0.5 \
       --output "$NEEDLE"
   uv run python run_needle.py --model "$M" --ctx "$CTX" --needle "$NEEDLE"
 

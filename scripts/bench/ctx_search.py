@@ -31,8 +31,9 @@ from metadata import collect, write
 @dataclass
 class ProbeResult:
     ctx: int
+    effective_ctx: int  # ollama ps の context_length(モデル上限でキャップされた場合は要求より小さい)
     success: bool
-    reason: str  # "ok" | "oom" | "cpu_offload" | "low_vram" | "error"
+    reason: str  # "ok" | "ok_capped" | "oom" | "cpu_offload" | "low_vram" | "error"
     size_bytes: int = 0
     size_vram_bytes: int = 0
     vram_free_mib: int = 0
@@ -71,7 +72,11 @@ def probe(
     ctx: int,
     min_free_mib: int = 500,
 ) -> ProbeResult:
-    """指定 ctx でロードして OK/NG を判定し、必ず unload して返す。"""
+    """指定 ctx でロードして OK/NG を判定し、必ず unload して返す。
+
+    Ollama がモデル上限で要求 ctx をキャップした場合は effective_ctx に実値を入れ、
+    reason を "ok_capped" にする。
+    """
     try:
         client.generate(
             model,
@@ -82,17 +87,20 @@ def probe(
             keep_alive="2m",
         )
     except Exception as e:
-        return ProbeResult(ctx=ctx, success=False, reason="error", error=str(e))
+        return ProbeResult(ctx=ctx, effective_ctx=0, success=False, reason="error", error=str(e))
 
     info = client.model_info_in_ps(model)
     if info is None:
-        # load 後に ps に現れない = OOM や即解放など、何かおかしい
         client.unload(model)
         client.wait_unloaded(model)
-        return ProbeResult(ctx=ctx, success=False, reason="oom", error="not in ps after load")
+        return ProbeResult(
+            ctx=ctx, effective_ctx=0, success=False, reason="oom",
+            error="not in ps after load",
+        )
 
     size = int(info.get("size", 0))
     size_vram = int(info.get("size_vram", 0))
+    effective = int(info.get("context_length", ctx))
     free_mib = _nvidia_free_mib()
 
     client.unload(model)
@@ -100,31 +108,24 @@ def probe(
 
     if size > 0 and size_vram < size:
         return ProbeResult(
-            ctx=ctx,
-            success=False,
-            reason="cpu_offload",
-            size_bytes=size,
-            size_vram_bytes=size_vram,
-            vram_free_mib=free_mib,
+            ctx=ctx, effective_ctx=effective,
+            success=False, reason="cpu_offload",
+            size_bytes=size, size_vram_bytes=size_vram, vram_free_mib=free_mib,
         )
 
     if free_mib < min_free_mib:
         return ProbeResult(
-            ctx=ctx,
-            success=False,
-            reason="low_vram",
-            size_bytes=size,
-            size_vram_bytes=size_vram,
-            vram_free_mib=free_mib,
+            ctx=ctx, effective_ctx=effective,
+            success=False, reason="low_vram",
+            size_bytes=size, size_vram_bytes=size_vram, vram_free_mib=free_mib,
         )
 
     return ProbeResult(
         ctx=ctx,
+        effective_ctx=effective,
         success=True,
-        reason="ok",
-        size_bytes=size,
-        size_vram_bytes=size_vram,
-        vram_free_mib=free_mib,
+        reason="ok_capped" if effective < ctx else "ok",
+        size_bytes=size, size_vram_bytes=size_vram, vram_free_mib=free_mib,
     )
 
 
@@ -160,14 +161,15 @@ def binary_search_max_ctx(
     print(f"  -> {'ok' if res_low.success else 'NG'} ({res_low.reason})")
     if not res_low.success:
         return result  # 下限も通らない
-    result.max_ctx = low
+    result.max_ctx = res_low.effective_ctx if res_low.reason == "ok_capped" else low
 
     print(f"[probe] high={high}")
     res_high = probe(client, model, high, min_free_mib)
     history.append(res_high)
     print(f"  -> {'ok' if res_high.success else 'NG'} ({res_high.reason})")
     if res_high.success:
-        result.max_ctx = high
+        # capped の場合は実効値を max_ctx として返し、これ以上探索しない
+        result.max_ctx = res_high.effective_ctx if res_high.reason == "ok_capped" else high
         return result
 
     lo, hi = low, high
@@ -180,6 +182,10 @@ def binary_search_max_ctx(
         history.append(res)
         print(f"  -> {'ok' if res.success else 'NG'} ({res.reason})")
         if res.success:
+            if res.reason == "ok_capped":
+                # mid 要求が capped された = モデル上限が effective_ctx
+                result.max_ctx = res.effective_ctx
+                return result
             lo = mid
             result.max_ctx = mid
         else:

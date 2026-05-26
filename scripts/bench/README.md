@@ -229,6 +229,8 @@ systemctl show ollama -p Environment   # 4 つが反映されているか確認
 | 重み = VRAM − 1 〜 2 GB | 境界。KV 量子化必須、長 ctx は厳しい                      |
 | 重み > VRAM             | 強量子化(IQ3 / int4 等)タグがあるかを確認、無ければ対象外 |
 
+加えて、**速度の下限を引き出す参照用に各系列の最小バリアントも 1〜2 個含める** ことを推奨(Qwen3.5 の 0.8b / 2b 等)。これらは小さい分高速で、「**サイズと品質のトレードオフ曲線**」を完成させる。VRAM に余裕があるので評価コストもほぼ無視できる。
+
 ### 3. docs/04-results.md に新規 GPU セクションを起こす
 
 既存 GTX 1080 / RTX 4080 SUPER セクションをテンプレートに、新規 GPU 用のセクションを追加する。**この時点では結果テーブルは空のままで、評価対象選定の根拠だけを書く**(後で結果を埋める)。
@@ -331,6 +333,38 @@ uv run python run_coding.py --model "$MODEL" --ctx 16384 \
 本評価では、easy → hard で 1.00 → 0.815〜0.982 まで差が開いた。最大モデル(R1:14B)が最低スコアだったり、bugfix で「バグはない」と LLM が拒否する挙動など、easy では見えなかった特性が浮き出る。
 
 同じ要領で Summary 用にも難セット `data/summary/meetings_hard.json` を将来追加可能(現状は 2 件のみで未整備)。
+
+### 7.6. think モード比較(任意、thinking 対応モデルのみ)
+
+Qwen3.5 / Gemma 4 / DeepSeek-R1 系で thinking モードが品質に効くかを見る場合は、`run_think_compare.sh` を使うか、個別に `--think true` で再走する。
+
+**重要: `num_predict` を最低 4096 取ること**。本評価で Qwen3.5:9b を `num_predict=2048` think=true で走らせたら **思考だけで budget を使い切って応答が空**(Coding 0.67、Summary 0.00)、4096 に上げたら 1.00 / 0.78 まで回復した。思考分の予算を見込まないと **think=false より露骨に悪い結果**になる。
+
+```bash
+uv run python run_coding.py --model "$MODEL" --ctx 16384 \
+    --think true --num-predict 4096 \
+    --tasks data/coding/tasks.json
+```
+
+### 7.7. 多人数同時利用想定 pass(任意、num_parallel)
+
+`OLLAMA_NUM_PARALLEL=1` を 2 / 4 に上げて再計測する場合は、systemd override を書き換えて再起動が必要(`kv.py` と同様 sudo)。**KV cache が並列数倍に膨らむため、max ctx が大きく縮む** ことを念頭に。
+
+社内多人数共有(API として複数ユーザにサーブ)を想定する時に意味のあるパス。1 ユーザ専有なら本パスは不要。
+
+### 7.8. 再現性 / 揺らぎ確認(任意)
+
+`temperature=1`(Ollama 既定)では出力に揺らぎが出る。記事や正式レポート向けに数値を出す場合、主力 3 モデル程度を **3 回繰り返し** て stddev を出すことを推奨。tok/s や VRAM は安定するが、Coding / Summary スコアにはバラつきが乗ることがある。
+
+簡易ループ:
+
+```bash
+for i in 1 2 3; do
+  uv run python run_speed.py --model qwen3.5:9b-q4_K_M --ctx 131072
+  uv run python run_coding.py --model qwen3.5:9b-q4_K_M --ctx 16384 \
+      --tasks data/coding/tasks_hard.json --num-predict 3072
+done
+```
 
 ### 8. 結果を docs/04-results.md にまとめる
 

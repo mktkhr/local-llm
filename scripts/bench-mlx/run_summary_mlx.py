@@ -18,7 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from client_mlx import apply_chat_template, generate_with_metrics, load_model
+from client_mlx import apply_chat_template, generate_with_metrics, load_model, warmup
 from memory_mlx import clear_cache, get_active_memory_mib, reset_peak
 from metadata_mlx import collect, write
 from scorer import score_summary_task
@@ -85,6 +85,9 @@ def main() -> None:
     print(f"[load] {args.model}")
     model, tokenizer = load_model(args.model)
     print(f"  active={get_active_memory_mib():.0f} MiB")
+
+    print(f"[warmup] 1 token")
+    warmup(model, tokenizer, kv_bits=args.kv_bits)
 
     per_meeting: list[dict[str, Any]] = []
     peak_overall = 0.0

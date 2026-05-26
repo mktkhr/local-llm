@@ -7,6 +7,11 @@
 
 set -uo pipefail
 
+export PYTHONUNBUFFERED=1
+
+# RTX 4080 SUPER (KV q8_0) との公平比較のため、Mac側も KV を 8bit 量子化する。
+KV_BITS=8
+
 # 小さい順。途中で中断しても評価済みモデル数が最大化されるように。
 # 27B-8bit / DSC-Lite-8bit は重みだけで working_set の大半を占めるため初期 pass では除外。
 DEFAULT_MODELS=(
@@ -57,9 +62,9 @@ for M in "${MODELS[@]}"; do
   echo "===== $M  (start $(date +%H:%M:%S))"
   echo "==================================================================="
 
-  echo "[1/5] ctx_search"
+  echo "[1/5] ctx_search (kv_bits=$KV_BITS)"
   uv run python ctx_search_mlx.py --model "$M" --low 4096 --high 262144 \
-      --tolerance 4096 --safety-margin-mib 2048
+      --tolerance 4096 --safety-margin-mib 2048 --kv-bits "$KV_BITS"
 
   CTX_FILE=$(find results/ -name "ctx_search_${SANITIZED}.json" \
       -print0 2>/dev/null | xargs -0 ls -1t 2>/dev/null | head -1)
@@ -75,25 +80,25 @@ for M in "${MODELS[@]}"; do
   echo "  max_ctx=$CTX"
 
   echo
-  echo "[2/5] speed @ ctx=$CTX"
-  uv run python run_speed_mlx.py --model "$M" --ctx "$CTX"
+  echo "[2/5] speed @ ctx=$CTX kv_bits=$KV_BITS"
+  uv run python run_speed_mlx.py --model "$M" --ctx "$CTX" --kv-bits "$KV_BITS"
 
   echo
-  echo "[3/5] needle @ depth=100% pos=50%"
+  echo "[3/5] needle @ depth=100% pos=50% kv_bits=$KV_BITS"
   NEEDLE="data/needle/${SANITIZED}_d100_p50.json"
   NEEDLE_CHARS=$(( CTX * 9 / 10 ))
   uv run python data/needle/generate.py --chars "$NEEDLE_CHARS" --position-pct 0.5 \
       --output "$NEEDLE"
-  uv run python run_needle_mlx.py --model "$M" --ctx "$CTX" --needle "$NEEDLE"
+  uv run python run_needle_mlx.py --model "$M" --ctx "$CTX" --needle "$NEEDLE" --kv-bits "$KV_BITS"
 
   echo
-  echo "[4/5] coding @ ctx=16384"
-  uv run python run_coding_mlx.py --model "$M" --ctx 16384 \
+  echo "[4/5] coding @ ctx=16384 kv_bits=$KV_BITS"
+  uv run python run_coding_mlx.py --model "$M" --ctx 16384 --kv-bits "$KV_BITS" \
       --tasks data/coding/tasks.json
 
   echo
-  echo "[5/5] summary @ ctx=16384"
-  uv run python run_summary_mlx.py --model "$M" --ctx 16384 \
+  echo "[5/5] summary @ ctx=16384 kv_bits=$KV_BITS"
+  uv run python run_summary_mlx.py --model "$M" --ctx 16384 --kv-bits "$KV_BITS" \
       --meetings data/summary/meetings.json
 
   echo "===== $M  (end $(date +%H:%M:%S))"

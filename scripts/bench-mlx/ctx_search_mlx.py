@@ -31,7 +31,7 @@ from typing import Any
 
 import mlx.core as mx
 
-from client_mlx import generate_with_metrics, load_model
+from client_mlx import generate_with_metrics, load_model, warmup
 from memory_mlx import (
     clear_cache,
     effective_gpu_limit_mib,
@@ -335,6 +335,10 @@ def main() -> None:
     model_max_pos = _model_max_position(model)
     print(f"  model.max_position_embeddings = {model_max_pos}")
     print(f"  active mem after load = {mx.get_active_memory() / (1024 * 1024):.0f} MiB")
+
+    print(f"[warmup] 1 token")
+    warmup(model, tokenizer, kv_bits=args.kv_bits)
+    reset_peak()
 
     result = binary_search_max_ctx(
         model,

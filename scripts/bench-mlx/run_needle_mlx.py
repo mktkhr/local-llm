@@ -17,7 +17,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from client_mlx import apply_chat_template, generate_with_metrics, load_model
+from client_mlx import apply_chat_template, generate_with_metrics, load_model, warmup
 from memory_mlx import clear_cache, get_active_memory_mib, reset_peak
 from metadata_mlx import collect, write
 
@@ -62,9 +62,12 @@ def main() -> None:
     model, tokenizer = load_model(args.model)
     print(f"  active={get_active_memory_mib():.0f} MiB")
 
+    print(f"[warmup] 1 token")
+    warmup(model, tokenizer, kv_bits=args.kv_bits)
+    reset_peak()
+
     text = apply_chat_template(tokenizer, needle_data["prompt"], enable_thinking=think)
 
-    reset_peak()
     print(
         f"[run] ctx={args.ctx} needle_id={needle_data['needle_id']} "
         f"pos={needle_data['position_pct']}"

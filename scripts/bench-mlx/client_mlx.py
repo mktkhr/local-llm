@@ -84,6 +84,23 @@ def reset_peak_memory() -> None:
     mx.reset_peak_memory()
 
 
+def warmup(model: Any, tokenizer: Any, *, kv_bits: int | None = None) -> None:
+    """Metal shader の初回 JIT コンパイル分を本計測から外すため、ダミー 1 トークン生成を回す。
+
+    Linux + Ollama 版の run_speed.py が "hi" + num_predict=1 で同じ役割を果たしている。
+    呼び出し後に reset_peak_memory() を呼ぶことで warmup のメモリピークも除外される。
+    """
+    text = apply_chat_template(tokenizer, "hi")
+    # stream_generate を 1 token だけ回す。結果は捨てる
+    from mlx_lm import stream_generate
+
+    kwargs: dict[str, Any] = {"max_tokens": 1}
+    if kv_bits is not None:
+        kwargs["kv_bits"] = kv_bits
+    for _ in stream_generate(model, tokenizer, text, **kwargs):
+        break
+
+
 def generate_with_metrics(
     model: Any,
     tokenizer: Any,
@@ -113,7 +130,10 @@ def generate_with_metrics(
     }
     if kv_bits is not None:
         kwargs["kv_bits"] = kv_bits
-    if max_kv_size is not None:
+    # max_kv_size を渡すと RotatingKVCache が使われるが、それは KV 量子化と
+    # 排他(`RotatingKVCache Quantization NYI`)。本評価では rotation 不要のため、
+    # kv_bits が指定された時は max_kv_size を無視する。
+    if max_kv_size is not None and kv_bits is None:
         kwargs["max_kv_size"] = max_kv_size
 
     for resp in stream_generate(model, tokenizer, prompt, **kwargs):

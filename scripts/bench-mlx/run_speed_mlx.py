@@ -22,7 +22,7 @@ from pathlib import Path
 
 import mlx.core as mx
 
-from client_mlx import apply_chat_template, generate_with_metrics, load_model
+from client_mlx import apply_chat_template, generate_with_metrics, load_model, warmup
 from memory_mlx import clear_cache, get_active_memory_mib, get_peak_memory_mib, reset_peak
 from metadata_mlx import collect, write
 
@@ -95,13 +95,17 @@ def main() -> None:
     peak_after_load_mib = get_peak_memory_mib()
     print(f"  active={mem_after_load_mib:.1f} MiB, peak={peak_after_load_mib:.1f} MiB")
 
+    # Metal shader 初回 JIT 分を計測から外す
+    print(f"[warmup] 1 token")
+    warmup(model, tokenizer, kv_bits=args.kv_bits)
+    reset_peak()
+
     text = apply_chat_template(
         tokenizer,
         args.prompt,
         enable_thinking=(think if think else False),
     )
 
-    reset_peak()
     print(f"[measure] generate ctx_max={args.ctx} kv_bits={args.kv_bits}")
     result = generate_with_metrics(
         model,

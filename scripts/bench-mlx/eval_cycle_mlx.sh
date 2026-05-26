@@ -14,6 +14,10 @@ set -uo pipefail
 # [probe] / max_ctx= が見えなくなって進捗判別ができないため。
 export PYTHONUNBUFFERED=1
 
+# RTX 4080 SUPER (KV q8_0) との公平比較のため、Mac側も KV を 8bit 量子化する。
+# 各ランナーの --kv-bits 引数で指定する。
+KV_BITS=8
+
 DEFAULT_MODELS=(
   # 小型 (< 5 GB)
   "mlx-community/Qwen3.5-4B-MLX-4bit"
@@ -94,9 +98,9 @@ for M in "${MODELS[@]}"; do
   echo "  free after pull: $(free_disk_gb) GB"
 
   # ----------------- ctx_search -----------------
-  echo "[1/5] ctx_search"
+  echo "[1/5] ctx_search (kv_bits=$KV_BITS)"
   if ! uv run python ctx_search_mlx.py --model "$M" --low 4096 --high 262144 \
-        --tolerance 4096 --safety-margin-mib 2048; then
+        --tolerance 4096 --safety-margin-mib 2048 --kv-bits "$KV_BITS"; then
     echo "  ERROR: ctx_search failed"
     FAILED_MODELS+=("$M:ctx_search")
   fi
@@ -121,31 +125,31 @@ for M in "${MODELS[@]}"; do
 
   # ----------------- speed -----------------
   echo
-  echo "[2/5] speed @ ctx=$CTX"
-  uv run python run_speed_mlx.py --model "$M" --ctx "$CTX" || \
+  echo "[2/5] speed @ ctx=$CTX kv_bits=$KV_BITS"
+  uv run python run_speed_mlx.py --model "$M" --ctx "$CTX" --kv-bits "$KV_BITS" || \
     FAILED_MODELS+=("$M:speed")
 
   # ----------------- needle -----------------
   echo
-  echo "[3/5] needle @ depth=100% pos=50%"
+  echo "[3/5] needle @ depth=100% pos=50% kv_bits=$KV_BITS"
   NEEDLE="data/needle/${SANITIZED}_d100_p50.json"
   # KV ヘッダ等で末尾が削れることを見越して chars は ctx の 90% を狙う
   NEEDLE_CHARS=$(( CTX * 9 / 10 ))
   uv run python data/needle/generate.py --chars "$NEEDLE_CHARS" --position-pct 0.5 \
       --output "$NEEDLE"
-  uv run python run_needle_mlx.py --model "$M" --ctx "$CTX" --needle "$NEEDLE" || \
+  uv run python run_needle_mlx.py --model "$M" --ctx "$CTX" --needle "$NEEDLE" --kv-bits "$KV_BITS" || \
     FAILED_MODELS+=("$M:needle")
 
   # ----------------- coding -----------------
   echo
-  echo "[4/5] coding @ ctx=16384"
-  uv run python run_coding_mlx.py --model "$M" --ctx 16384 \
+  echo "[4/5] coding @ ctx=16384 kv_bits=$KV_BITS"
+  uv run python run_coding_mlx.py --model "$M" --ctx 16384 --kv-bits "$KV_BITS" \
       --tasks data/coding/tasks.json || FAILED_MODELS+=("$M:coding")
 
   # ----------------- summary -----------------
   echo
-  echo "[5/5] summary @ ctx=16384"
-  uv run python run_summary_mlx.py --model "$M" --ctx 16384 \
+  echo "[5/5] summary @ ctx=16384 kv_bits=$KV_BITS"
+  uv run python run_summary_mlx.py --model "$M" --ctx 16384 --kv-bits "$KV_BITS" \
       --meetings data/summary/meetings.json || FAILED_MODELS+=("$M:summary")
 
   # ----------------- cleanup -----------------

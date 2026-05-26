@@ -319,6 +319,38 @@ Qwen3 系 / Gemma 系 / DeepSeek 系を対象とする(ユーザー選択)。各
 
 > **注意**: q4_0 の Needle 初回 sweep では Gemma 4 全 3 / deepseek-r1:8b-0528 で偽の失敗が出ていた(`ctx_search` がモデル上限キャップを検出していなかったため、262144 文字の文書で needle が context overflow で落ちていた)。`ctx_search` の修正と chars=ctx×0.9 への変更後、すべて成功を再確認している。表の数値は修正後の値。
 
+### Thinking モードの比較(主要 3 モデル、ctx=16384)
+
+`think=true` / `think=false` を主要 3 モデルで切り替え、speed・coding・summary をそれぞれ計測した。Speed は `num_predict=512`(false は 128 → 512 で揃え)、Coding/Summary は `num_predict=2048`(false は 1024 → 2048 で揃え)で実施。
+
+| Model | think | Decode tok/s | Speed eval_count | TTFT (s) | Total elapsed (s) | Coding | Summary |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen3.5:9b-q4_K_M | false | 89.5 | 74 | 0.30 | 1.21 | **1.00** | 0.67 |
+| qwen3.5:9b-q4_K_M | **true** | 87.0 | 512 | 6.44 | 6.44 | **0.67** | **0.00** |
+| gemma4:e4b-it-q4_K_M | false | 123.2 | 72 | 0.37 | 1.21 | 1.00 | 0.67 |
+| gemma4:e4b-it-q4_K_M | **true** | 128.6 | 512 | 2.44 | 3.44 | 1.00 | **0.81** |
+| deepseek-r1:8b-0528-qwen3-q4_K_M | false | 111.2 | 61 | 0.15 | 0.95 | 1.00 | 0.72 |
+| deepseek-r1:8b-0528-qwen3-q4_K_M | **true** | 107.1 | 357 | 2.41 | 3.58 | 1.00 | 0.75 |
+
+**観察**
+
+- **Decode tok/s は think に依らずほぼ不変**(±5% 以内)。トークン当たりの生成速度は同じで、差は出力トークン数の多寡から生まれる
+- **eval_count(生成トークン数)は 5〜7 倍に膨らむ**: think=true で `<think>...</think>` ブロックを大量に挟むため。Speed テスト(num_predict=512)では Qwen3.5:9b / Gemma 4 が両方とも上限 512 まで使い切った
+- **Total elapsed は 3〜7 倍**: TTFT は同じでも、思考分のトークンを全て生成するまでストリームは終わらない。**対話 UX としては明らかに重い**
+- **品質はモデル依存で大きく分岐**:
+  - **Gemma 4 e4b**: Summary が 0.67 → **0.81** に向上。思考が品質に効くタイプ
+  - **DeepSeek-R1:8B-0528**: Summary が 0.72 → 0.75 と微増。Coding は両モードとも 1.00 で差なし
+  - **Qwen3.5:9B**: 逆に **Coding 1.00 → 0.67、Summary 0.67 → 0.00** と大幅劣化。原因は **num_predict=2048 が思考だけで使い切られ、最終応答が空のまま終わる**ケースが頻発したため(`impl_002` `refactor_001` で `code_extracted=false`、summary の応答も完全に空)
+- **示唆**: Qwen3.5:9B で think を有効化したい場合は `num_predict` を 4096 以上に上げる必要がある。要約タスクで本当に効果があるかは要再検証
+
+**運用提言**
+
+- 対話型用途では **think=false が標準**。Total elapsed の差(1 秒 vs 6 秒)はユーザー体感に直結する
+- 要約・複雑な分析で品質を取りたい場合のみ **think=true を限定的に**。ただし **Qwen3.5 系は num_predict 不足で逆に劣化** するリスクがあるので、有効化時は予算を十分に取る
+- DeepSeek-R1 系は元々思考前提に設計されているが、本評価の合成タスク程度では think=false でも十分機能する
+
+> [docs/05-auth-gate.md](05-auth-gate.md) §「think-injector の役割」で言及している通り、本評価では `/api/*` 経路で `think:false` を主測定値としている。本セクションはそのスコープ外でモデル本来の挙動を観察した結果。
+
 ### 採用推奨(用途別)
 
 | 用途                     | モデル                                     | Max ctx | Decode      | 採用理由                                                                             |

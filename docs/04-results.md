@@ -342,6 +342,7 @@ Qwen3 系 / Gemma 系 / DeepSeek 系を対象とする(ユーザー選択)。各
   - **DeepSeek-R1:8B-0528**: Summary が 0.72 → 0.75 と微増。Coding は両モードとも 1.00 で差なし
   - **Qwen3.5:9B**: `num_predict=2048` 時点では **Coding 1.00 → 0.67、Summary 0.67 → 0.00** と大幅劣化していた(思考だけで budget を使い切り `code_extracted=false` / 応答完全に空)。**追試で `num_predict=4096` まで上げたところ、Coding 1.00 / Summary 0.78 まで回復** — これは think=false ベースライン(0.67〜0.78)と同等以上。**think 失敗の原因は budget であってモデル特性ではない** ことが確定した
 - **示唆**: thinking 系モデルは **num_predict を最低 4096、複雑タスクでは 8192 以上** 取る前提で運用する。「思考分 + 回答分」の両方が収まるよう余裕を持たせること。**budget 不足での think=true は think=false より露骨に悪い結果になる**
+- **num_predict を 8192 / 16384 まで増やしても Coding は 1.00 で安定、Summary は 0.67〜0.78 の範囲で揺れる**(qwen3.5:9b で確認)。Summary の揺れは temperature=1 の通常変動と思われ、**「大きくしすぎて逆効果」ではない**(モデルは EOS で自然停止し、budget は上限としてしか使われない)。**安全側に倒すなら think=true で 4096〜8192 が運用範囲**
 
 **運用提言**
 

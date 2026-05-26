@@ -447,6 +447,28 @@ Qwen3 系 / Gemma 系 / DeepSeek 系を対象とする(ユーザー選択)。各
 
 > 難タスクの再現は `scripts/bench/data/coding/tasks_hard.json` を `--tasks` に渡すだけ。`uv run python run_coding.py --model <tag> --ctx 16384 --num-predict 3072 --tasks data/coding/tasks_hard.json`。
 
+### 再現性 / 揺らぎ(主力 3 モデル × 3 回繰り返し)
+
+`temperature=1`(Ollama 既定)での出力ばらつきを定量化するため、主力 3 モデルで Coding hard / Summary を 3 回ずつ走らせた(ctx=16384、KV=q8_0、think=false)。
+
+| Model | Test | iter1 | iter2 | iter3 | mean | stddev |
+| --- | --- | --- | --- | --- | --- | --- |
+| qwen3.5:9b-q4_K_M | coding_hard | 0.917 | 0.898 | 0.898 | 0.904 | **0.011** |
+| qwen3.5:9b-q4_K_M | summary | 0.666 | 0.611 | 0.777 | 0.685 | **0.085** |
+| gemma4:e4b-it-q4_K_M | coding_hard | 0.982 | 0.982 | 0.982 | 0.982 | **0.000** |
+| gemma4:e4b-it-q4_K_M | summary | 0.777 | 0.805 | 0.861 | 0.814 | **0.043** |
+| deepseek-r1:8b-0528-qwen3-q4_K_M | coding_hard | 0.963 | 0.945 | 0.928 | 0.945 | **0.018** |
+| deepseek-r1:8b-0528-qwen3-q4_K_M | summary | 0.722 | 0.722 | 0.722 | 0.722 | **0.000** |
+
+**読みどころ**
+
+- **Coding は実質決定論的**: stddev ≤ 0.018。`temperature=1` でも実装タスクではモデルが「正解コード」に収束する。**Coding スコアは単発値で記事に書ける**
+- **Summary は揺らぎが乗る**: qwen3.5:9b で stddev=0.085(0.611〜0.777 の幅)、gemma4:e4b で stddev=0.043。**Summary スコアは ±0.05〜0.09 を見込む** か、可能なら平均値で報じる
+- **DeepSeek-R1:8b-0528 は両指標で完全再現**(stddev=0.000)。thinking 系の出力が他より安定している可能性
+- **本書中の主力テーブル(`100% GPU 動作` / `品質評価`)は単発値**。Summary の数値はおおむね「揺らぎの高めを引いた値」になっており、平均から +0.05〜0.10 のオーダーで偏っていることに注意
+
+> 上記の再現性スイープは `scripts/bench/run_variance.sh` で再現可能。`MODELS` と `ITERATIONS` を調整して走らせる。
+
 ### 注目すべき所見一覧
 
 各セクションで観察した「直感に反する / 記事化したい」発見を 1 か所に集約。詳細は各セクション本文。
@@ -466,6 +488,7 @@ Qwen3 系 / Gemma 系 / DeepSeek 系を対象とする(ユーザー選択)。各
 | 11 | **q8_0 化のメリットが見えない**: Qwen3.5 では q4_K_M → q8_0 で速度・max ctx・Summary すべて劣化。**VRAM を使って何も得ていない** | 100% GPU 動作 + 品質評価 |
 | 12 | **DeepSeek-R1:7B 蒸留は think=false で不安定**: Needle で数字捏造 / 応答崩壊。同シリーズの 8B-0528(Qwen3 ベース)と 14B では問題なし。**think=false の安定度はリビジョンの新しさに依存** | 品質評価 |
 | 13 | **`refactor_data_validator` は全モデル 9/9**: 6 段ネストの早期 return 化は LLM が得意な領域。**意味保存リファクタは小型モデルでも信頼できる** | 実コード相当の難タスク |
+| 14 | **Coding は実質決定論的、Summary は揺らぎ大**: 3 回繰り返しで Coding stddev ≤ 0.018(temperature=1 でもコードは収束)、Summary stddev は 0.000〜0.085。**Summary スコアは ±0.05〜0.09 を見込む** | 再現性 / 揺らぎ |
 
 ### 採用推奨(用途別)
 

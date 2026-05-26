@@ -446,6 +446,26 @@ Qwen3 系 / Gemma 系 / DeepSeek 系を対象とする(ユーザー選択)。各
 
 > 難タスクの再現は `scripts/bench/data/coding/tasks_hard.json` を `--tasks` に渡すだけ。`uv run python run_coding.py --model <tag> --ctx 16384 --num-predict 3072 --tasks data/coding/tasks_hard.json`。
 
+### 注目すべき所見一覧
+
+各セクションで観察した「直感に反する / 記事化したい」発見を 1 か所に集約。詳細は各セクション本文。
+
+| # | 所見 | 由来 |
+| --- | --- | --- |
+| 1 | **KV `q4_0` はほぼフリーランチ**: q8_0 比で max ctx +10〜39%、速度劣化 ≤6%、Needle 品質維持。**運用既定値は q4_0 に振っていい** | KV キャッシュ量子化の比較 |
+| 2 | **KV `f16` は不利のみ**: max ctx -14〜-41%、Flash Attention 有効下では速度メリット無し。**選ぶ理由が無い** | KV キャッシュ量子化の比較 |
+| 3 | **`think=true` は品質を保証しない**: Gemma 4 e4b は Summary +0.14 で改善するが、Qwen3.5:9b は **num_predict 不足でほぼ無応答(Coding 1.00 → 0.67、Summary 0.67 → 0.00)**。応答時間は 3〜7 倍に膨らむ | Thinking モードの比較 |
+| 4 | **Needle 失敗には 2 種類ある**: (a) **ctx スケーリング型**(deepseek-r1:7b は 4K で 3/3 → 16K で 1/3 → 65K 以降で 0/3、長くなるほど崩壊)、(b) **位置依存型**(deepseek-coder-v2 は ctx に依らず pos 90% のみ ✓、末尾しか参照しない検索能力の欠如) | Needle 網羅スイープ |
+| 5 | **easy タスクはモデル選定の決め手にならない**: `add(a,b)` 等の合成 6 タスクは 6 モデル全てが 100%。難タスクに差し替えて初めて 0.815〜0.982 に分散 | 実コード相当の難タスク |
+| 6 | **「サイズが大きい = 賢い」は明確に成り立たない**: DeepSeek-R1:14B は同シリーズの 8B(0528)よりスコアが低く、impl_flatten_dict では 2/6 と急落。最大モデルが勝つとは限らない | 実コード相当の難タスク |
+| 7 | **Gemma 4 e4b は意外な総合トップ**: 難 Coding 0.982(最高)+ Summary 0.86 + Needle 全勝。**マルチモーダル指向の小型モデルがコード特化 MoE に並ぶ** | 実コード相当の難タスク |
+| 8 | **Qwen3.5:9B には「バグはない」と主張する debug 盲点**: 明らかな two_sum バグを「論理的に正しい」と言い切り、num_predict を増やしても直らない。**LLM の自信過剰が debug 用途で致命的** | 実コード相当の難タスク |
+| 9 | **MoE は decode が速いが日本語長文検索を苦手とする**: deepseek-coder-v2 は **decode 268 tok/s と全モデル中最速**、しかし needle は全 ctx で pos 90% しか拾えない。**コード補完専用と割り切る**のが妥当 | 100% GPU 動作 + Needle 網羅スイープ |
+| 10 | **Ollama はモデル上限で要求 ctx を黙ってキャップする**: Gemma 4 で `--ctx 262144` を要求しても実効は `131072`。`/api/ps` の `context_length` でしか判明しない罠。**ctx_search.py で検出してログに残す** ようにしてある | ctx_search 実装 |
+| 11 | **q8_0 化のメリットが見えない**: Qwen3.5 では q4_K_M → q8_0 で速度・max ctx・Summary すべて劣化。**VRAM を使って何も得ていない** | 100% GPU 動作 + 品質評価 |
+| 12 | **DeepSeek-R1:7B 蒸留は think=false で不安定**: Needle で数字捏造 / 応答崩壊。同シリーズの 8B-0528(Qwen3 ベース)と 14B では問題なし。**think=false の安定度はリビジョンの新しさに依存** | 品質評価 |
+| 13 | **`refactor_data_validator` は全モデル 9/9**: 6 段ネストの早期 return 化は LLM が得意な領域。**意味保存リファクタは小型モデルでも信頼できる** | 実コード相当の難タスク |
+
 ### 採用推奨(用途別)
 
 | 用途                     | モデル                                     | Max ctx | Decode      | 採用理由                                                                             |

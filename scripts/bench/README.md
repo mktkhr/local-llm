@@ -316,6 +316,22 @@ uv run python ctx_search.py --model "$MODEL" --high 262144
 
 KV を変えたデータは「KV=XXX」を明示して別表として `docs/04-results.md` に追記する。
 
+### 7.5. 合成タスクで差が出なかった時は難タスクへ差し替え
+
+`data/coding/tasks.json` の合成タスク(add / fib / factorial / ...)は **小型モデルでも 100% 取りやすく、モデル間の差別化に弱い**。本評価でも 13 タグ中 10 タグが満点で頭打ちになった。
+
+差別化の必要があれば、難度を上げた `data/coding/tasks_hard.json`(impl_flatten_dict / impl_balanced_brackets / impl_parse_bearer_token / bugfix_two_sum / bugfix_max_subarray / refactor_data_validator の 6 タスク、OIDC ドメインを含む)に差し替えて再走する。**num_predict は 3072 以上** を推奨(モデルが解説を出した後にコードを書く分の余裕)。
+
+```bash
+uv run python run_coding.py --model "$MODEL" --ctx 16384 \
+    --num-predict 3072 \
+    --tasks data/coding/tasks_hard.json
+```
+
+本評価では、easy → hard で 1.00 → 0.815〜0.982 まで差が開いた。最大モデル(R1:14B)が最低スコアだったり、bugfix で「バグはない」と LLM が拒否する挙動など、easy では見えなかった特性が浮き出る。
+
+同じ要領で Summary 用にも難セット `data/summary/meetings_hard.json` を将来追加可能(現状は 2 件のみで未整備)。
+
 ### 8. 結果を docs/04-results.md にまとめる
 
 `results/<timestamp>/` 配下の JSON から数値を拾って表に転記。docs/04 既存セクションのフォーマットに合わせて:

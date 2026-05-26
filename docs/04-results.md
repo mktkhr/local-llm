@@ -351,6 +351,44 @@ Qwen3 系 / Gemma 系 / DeepSeek 系を対象とする(ユーザー選択)。各
 
 > [docs/05-auth-gate.md](05-auth-gate.md) §「think-injector の役割」で言及している通り、本評価では `/api/*` 経路で `think:false` を主測定値としている。本セクションはそのスコープ外でモデル本来の挙動を観察した結果。
 
+### Needle In A Haystack 網羅スイープ(深度 × 位置)
+
+主要 4 モデル(2 全勝 + 2 落第)を **4 深度 × 3 位置 = 12 試行** で計測。試行は `KV=q8_0`、`think=false`、`chars=ctx×0.9`。`✓` は needle_id を応答に含む、`✗` は含まない。
+
+| Model | depth | pos 10% | pos 50% | pos 90% |
+| --- | --- | --- | --- | --- |
+| qwen3.5:4b-q4_K_M | 4096 | ✓ | ✓ | ✓ |
+| qwen3.5:4b-q4_K_M | 16384 | ✓ | ✓ | ✓ |
+| qwen3.5:4b-q4_K_M | 65536 | ✓ | ✓ | ✓ |
+| qwen3.5:4b-q4_K_M | 262144 | ✓ | ✓ | ✓ |
+| gemma4:e4b-it-q4_K_M | 4096 | ✓ | ✓ | ✓ |
+| gemma4:e4b-it-q4_K_M | 16384 | ✓ | ✓ | ✓ |
+| gemma4:e4b-it-q4_K_M | 65536 | ✓ | ✓ | ✓ |
+| gemma4:e4b-it-q4_K_M | 131072 | ✓ | ✓ | ✓ |
+| deepseek-r1:7b-qwen-distill-q4_K_M | 4096 | ✓ | ✓ | ✓ |
+| deepseek-r1:7b-qwen-distill-q4_K_M | 16384 | ✗ | ✗ | ✓ |
+| deepseek-r1:7b-qwen-distill-q4_K_M | 65536 | ✗ | ✗ | ✗ |
+| deepseek-r1:7b-qwen-distill-q4_K_M | 104448 | ✗ | ✗ | ✗ |
+| deepseek-coder-v2:16b-lite-instruct-q4_0 | 4096 | ✗ | ✗ | ✓ |
+| deepseek-coder-v2:16b-lite-instruct-q4_0 | 16384 | ✗ | ✗ | ✓ |
+| deepseek-coder-v2:16b-lite-instruct-q4_0 | 19456 | ✗ | ✗ | ✓ |
+
+**読みどころ**
+
+- **qwen3.5:4b-q4_K_M / gemma4:e4b-it-q4_K_M**: **12/12 全勝**。4K から各々の上限まで、3 位置すべてで needle を抽出。本評価の主力候補として相応しい長文耐性
+- **deepseek-r1:7b-qwen-distill-q4_K_M = ctx スケーリング問題**:
+  - 4K では 3/3 ✓(短文では普通に動く)
+  - 16K で 1/3(pos 90% のみ)に崩れ、65K 以上では 0/3
+  - **ctx が伸びるほど検索精度が崩壊する**。蒸留 7B クラスの長文能力の限界
+  - 元の think=false 計測でも長 ctx で needle を捏造していたのと整合
+- **deepseek-coder-v2:16b-lite-instruct-q4_0 = 位置依存問題**:
+  - どの ctx でも **pos 90% のみ ✓、pos 10% / 50% は全て ✗**(9 試行中 3 ✓)
+  - ctx 長は関係なく、**末尾近くしか参照しない**。長文中の「検索」ではなく「直近文脈の継続」しかしていない
+  - コード補完モデルとして「いま書いている関数のすぐ上を参照する」用途には適合、文書からの情報抽出には不向きという結論を強く裏付ける
+- **示唆**: Needle が「pos 50%」1 点だけだと deepseek-coder-v2 のような **位置依存型の弱さを見落とす**。pos 10% と 90% を併せて測ることで、モデルの長文性質が立体的に見える
+
+> 上の表は本評価方法論(`scripts/bench/run_needle_sweep.sh`)で再現可能。深度・位置は `DEPTHS` / `POSITIONS` 配列で変更できる。
+
 ### 採用推奨(用途別)
 
 | 用途                     | モデル                                     | Max ctx | Decode      | 採用理由                                                                             |

@@ -455,6 +455,29 @@ Qwen3 系 / Gemma 系 / DeepSeek 系を対象とする(ユーザー選択)。各
 
 > 難タスクの再現は `scripts/bench/data/coding/tasks_hard.json` を `--tasks` に渡すだけ。`uv run python run_coding.py --model <tag> --ctx 16384 --num-predict 3072 --tasks data/coding/tasks_hard.json`。
 
+### OLLAMA_NUM_PARALLEL の max_ctx 影響(2 モデル × NP=1/2/4)
+
+`OLLAMA_NUM_PARALLEL` を 2 / 4 に上げた場合の max_ctx 変化を、KV 感受性の異なる 2 モデルで計測。
+
+| Model | NP=1 max_ctx | NP=2 max_ctx | NP=4 max_ctx | パターン |
+| --- | --- | --- | --- | --- |
+| qwen3.5:9b-q4_K_M | 221184 | 221184 | 221184 | **NP に依らず不変** |
+| deepseek-r1:14b-qwen-distill-q4_K_M | 31744 | 15360 | 7168 | **NP に厳密に比例して 1/N** |
+
+**読みどころ**
+
+- **挙動が完全にモデル依存**(Ollama 0.24.0 時点)。qwen3.5:9b は単発リクエスト時の max_ctx が NP に依らず維持される一方、deepseek-r1:14b は per-slot ctx が NP 分の 1 に縮む
+- r1:14b のパターンは「**KV メモリ予算 ≒ 一定**」を意味する(NP × per-slot-ctx = 31744 でほぼ揃う:31744 / 30720 / 28672)。**Ollama が NP 数分のスロット領域を pre-allocate** している
+- qwen3.5:9b のパターンは「**遅延割り当てに見える挙動**」。VRAM peak は NP=1/2/4 で 15421 / 15396 / 15383 MiB とほぼ同じで、未使用スロットには KV が割かれていない
+- **decode tok/s は NP に依らず不変**(qwen3.5:9b は 88〜89、r1:14b は 65〜66)。NP 設定そのものに per-request 速度ペナルティはない
+- **本評価では単発リクエストの max_ctx 影響のみを測定**。実際の多人数同時利用時のスループット向上(2 並行で 2 倍の総合 tok/s が出るか等)は別途集中試験が必要
+
+**運用提言**
+
+- **1 人専有なら NP=1 のまま**(本評価の既定)。追加コストなくシンプル
+- **多人数同時利用するなら**: 受け持つモデルを r1:14b 系のように **per-slot ctx が縮むタイプ** であれば、max_ctx を NP 分の 1 で見積もる必要がある。qwen3.5 系のように **不変なタイプ** であれば長 ctx をユーザ間で共有可能
+- **モデルごとに事前に NP×ctx_search を回して挙動確認するのが安全**
+
 ### 再現性 / 揺らぎ(主力 3 モデル × 3 回繰り返し)
 
 `temperature=1`(Ollama 既定)での出力ばらつきを定量化するため、主力 3 モデルで Coding hard / Summary を 3 回ずつ走らせた(ctx=16384、KV=q8_0、think=false)。
@@ -499,6 +522,7 @@ Qwen3 系 / Gemma 系 / DeepSeek 系を対象とする(ユーザー選択)。各
 | 14 | **Coding は実質決定論的、Summary は揺らぎ大**: 3 回繰り返しで Coding stddev ≤ 0.018(temperature=1 でもコードは収束)、Summary stddev は 0.000〜0.085。**Summary スコアは ±0.05〜0.09 を見込む** | 再現性 / 揺らぎ |
 | 15 | **`qwen3.5:0.8b`(1.0 GB)が全モデル中最速 decode 280 tok/s**: deepseek-coder-v2 q4_0 の 268 tok/s を超える。VRAM も 7.8 GB しか使わず 8 GB 残る。**「とにかく軽く速く」の最有力候補は MoE ではなく超小型 Dense** | 100% GPU 動作(小型バリアント追加) |
 | 16 | **サイズと品質のトレードオフ曲線**: 難 Coding の overall_pass_rate は 0.8b=0.435、2b=0.676、4b=0.963、9b=0.815、e4b=0.982。**1 GB → 4 GB の閾値が大きい**(0.435 → 0.963)。**4 GB を超えると伸びは鈍化、むしろ Qwen 9b より小型の Gemma 4 e4b が上**。**「最低 4 GB クラス、それ以上はパラメータ数より系列選定」** が示唆される | 100% GPU 動作 + 実コード相当の難タスク |
+| 17 | **NUM_PARALLEL 挙動はモデル依存**: deepseek-r1:14b は per-slot ctx が NP に厳密に 1/N(NP=1 で 31K → NP=4 で 7K)、qwen3.5:9b は NP に依らず単発の max_ctx が不変。**多人数同時利用時の VRAM 見積もりはモデルごとに事前計測が必要** | OLLAMA_NUM_PARALLEL の max_ctx 影響 |
 
 ### 採用推奨(用途別)
 

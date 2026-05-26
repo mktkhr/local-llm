@@ -348,7 +348,24 @@ uv run python run_coding.py --model "$MODEL" --ctx 16384 \
 
 ### 7.7. 多人数同時利用想定 pass(任意、num_parallel)
 
-`OLLAMA_NUM_PARALLEL=1` を 2 / 4 に上げて再計測する場合は、systemd override を書き換えて再起動が必要(`kv.py` と同様 sudo)。**KV cache が並列数倍に膨らむため、max ctx が大きく縮む** ことを念頭に。
+`OLLAMA_NUM_PARALLEL=1` を 2 / 4 に上げて再計測する場合の手順:
+
+```bash
+sudo sed -i 's/OLLAMA_NUM_PARALLEL=1/OLLAMA_NUM_PARALLEL=2/' \
+    /etc/systemd/system/ollama.service.d/override.conf
+sudo systemctl daemon-reload && sudo systemctl restart ollama
+uv run python ctx_search.py --model "$MODEL" --high 262144
+uv run python run_speed.py --model "$MODEL" --ctx "$CTX"
+```
+
+NP=4 でも同様(`s/=2/=4/` に変更)。終わったら `s/=4/=1/` で戻す。
+
+**Ollama 0.24.0 時点の挙動はモデル依存**(本評価の RTX 4080 SUPER 観察):
+
+- **per-slot ctx が 1/N に縮むタイプ**(例: deepseek-r1:14b): NP=1 で max 31K → NP=4 で max 7K。KV を NP 数分 pre-allocate
+- **NP に依らず単発 max が不変なタイプ**(例: qwen3.5:9b): NP=1/2/4 すべて max 221K。遅延割り当て挙動
+
+**`decode tok/s` は NP に関わらず不変**(per-request の処理速度には影響しない)。多人数同時実利用時のスループット倍率は本評価では未測定(2 並行ストレスを別途流す必要あり)。
 
 社内多人数共有(API として複数ユーザにサーブ)を想定する時に意味のあるパス。1 ユーザ専有なら本パスは不要。
 

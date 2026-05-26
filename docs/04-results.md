@@ -389,6 +389,63 @@ Qwen3 系 / Gemma 系 / DeepSeek 系を対象とする(ユーザー選択)。各
 
 > 上の表は本評価方法論(`scripts/bench/run_needle_sweep.sh`)で再現可能。深度・位置は `DEPTHS` / `POSITIONS` 配列で変更できる。
 
+### 実コード相当の難タスク(`tasks_hard.json`)
+
+合成 6 タスク(`tasks.json`、impl=add/fib、bugfix=factorial/count_vowels、refactor=classify_age/squares_of_evens)では 13 タグ中 10 タグが 100% で、モデル間の差が出なかった。OIDC 用途も意識した難度を上げた 6 タスク(`tasks_hard.json`)を別途設計し、主力 6 モデルで再計測した。
+
+**追加タスク一覧**
+
+| Task | 種別 | 内容 |
+| --- | --- | --- |
+| `impl_flatten_dict` | impl | ネストした dict を `"."` 区切りキーに平坦化(値が dict のもののみ再帰) |
+| `impl_balanced_brackets` | impl | `()`/`[]`/`{}` の対応をチェック。空文字列は True、その他は混在文字を含めて判定 |
+| `impl_parse_bearer_token` | impl | `Authorization: Bearer <token>` 形式から token を抽出(case sensitive、空文字や不正形式は None) |
+| `bugfix_two_sum` | bugfix | LeetCode 風 two-sum の seen dict 検索条件が間違っている(`n in seen` ではなく `target - n in seen` であるべき) |
+| `bugfix_max_subarray` | bugfix | Kadane アルゴリズムの `best = current`(`best = max(best, current)` 漏れ) |
+| `refactor_data_validator` | refactor | 6 段ネストした if 文の検証関数を早期 return / ガード節で書き直す(7 種の戻り値分岐) |
+
+`num_predict=3072`(easy の 2 倍)、ctx=16384、KV=q8_0、think=false。
+
+#### 合成タスク vs 難タスクの全体比較
+
+| Model | Easy overall | Hard overall | Hard impl | Hard bugfix | Hard refactor |
+| --- | --- | --- | --- | --- | --- |
+| qwen3.5:4b-q4_K_M | 1.00 | 0.963 | 0.926 | 1.00 | 1.00 |
+| qwen3.5:9b-q4_K_M | 1.00 | **0.815** | 0.963 | **0.50** | 1.00 |
+| **gemma4:e4b-it-q4_K_M** | 1.00 | **0.982** | 0.963 | 1.00 | 1.00 |
+| deepseek-r1:8b-0528-qwen3-q4_K_M | 1.00 | 0.945 | 0.889 | 1.00 | 1.00 |
+| **deepseek-r1:14b-qwen-distill-q4_K_M** | 1.00 | **0.852** | **0.704** | 1.00 | 1.00 |
+| deepseek-coder-v2:16b-lite-instruct-q4_0 | 1.00 | 0.963 | 0.926 | 1.00 | 1.00 |
+
+#### 難タスクのタスク別正答数
+
+| Task | qwen 4b | qwen 9b | gemma e4b | r1 8b-0528 | r1 14b | coder-v2 q4_0 |
+| --- | --- | --- | --- | --- | --- | --- |
+| impl_flatten_dict (max 6) | 6 | 6 | 6 | 6 | **2** | 6 |
+| impl_balanced_brackets (max 10) | 10 | 10 | 10 | 10 | 10 | 10 |
+| impl_parse_bearer_token (max 9) | 7 | 8 | 8 | 6 | 7 | 7 |
+| bugfix_two_sum (max 6) | 6 | **err** | 6 | 6 | 6 | 6 |
+| bugfix_max_subarray (max 6) | 6 | 6 | 6 | 6 | 6 | 6 |
+| refactor_data_validator (max 9) | 9 | 9 | 9 | 9 | 9 | 9 |
+
+**読みどころ**
+
+- **合成タスクは差を出せていなかった**: 6 モデル全てが 1.00 で並ぶ。`add(a, b)` レベルでは差別化困難。**評価難度は意図的に上げる必要がある**
+- **難タスクのトップは Gemma 4 e4b(0.982)**: マルチモーダル指向の小型モデルが、コード特化の DeepSeek-Coder-V2 と並ぶか上回る
+- **DeepSeek-R1:14B は impl で 0.704 と急落、特に `impl_flatten_dict` で 2/6**: 大きな失敗パターンは「キーを `"."` で連結する仕様を読み落とし、`"ab"` のように直接連結」。**最大モデル = 最高品質とは限らない**ことの強い証拠
+- **Qwen3.5:9B は `bugfix_two_sum` で「バグはない」と主張**: バグ報告を受けても「このコードは LeetCode 標準解と整合的で論理的に正しく機能します」と返し、結果として `code_extracted=true` だが構文不全なコード(num_predict=3072 でも改善せず再現)。**LLM の自信過剰が debug 用途で致命的になりうる**
+- **`impl_parse_bearer_token`(OIDC ドメイン)で全モデルが減点**: 主に `"bearer abc"` の小文字プレフィックスを誤って受理 / `"Bearer "` の空トークンを誤って受理 / `"Bearer  spaced"` の二重空白の扱いが揺れる、など。本評価のスコープを超えるが、**プロトコル準拠コードでは LLM 全般に注意が要る**
+- **`refactor_data_validator` は全モデル 9/9**: 6 段ネスト → 早期 return への書き換えは、7 つの戻り値分岐込みでも全モデルが正しく機能保存できた。**意味保存リファクタは LLM が比較的得意な領域**
+
+**示唆**
+
+- 評価データは難度勾配を意図して設計しないと、モデル選定で差が出ない
+- 「**サイズが大きい = 賢い**」は本評価で **明確に成り立たない**。DeepSeek-R1:14B は同シリーズ 8B(0528 改良版)よりも低スコア
+- 推奨運用構成では `gemma4:e4b-it-q4_K_M` を **コーディング寄りでも候補に上げて良い**(Coding 0.982、Summary 0.86、Needle 全勝)
+- 同じ「Coding 完全合格」と表示されている easy 結果は、評価難度の問題で **モデル選定の決め手にしてはいけない**
+
+> 難タスクの再現は `scripts/bench/data/coding/tasks_hard.json` を `--tasks` に渡すだけ。`uv run python run_coding.py --model <tag> --ctx 16384 --num-predict 3072 --tasks data/coding/tasks_hard.json`。
+
 ### 採用推奨(用途別)
 
 | 用途                     | モデル                                     | Max ctx | Decode      | 採用理由                                                                             |

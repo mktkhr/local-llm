@@ -215,5 +215,5 @@ echo "==================================================================="
 echo "All done at $(date +%H:%M:%S)"
 echo "  OK: $OK_COUNT"
 echo "  Issues: ${#FAILED_MODELS[@]}"
-for M in "${FAILED_MODELS[@]}"; do echo "    - $M"; done
+for M in "${FAILED_MODELS[@]:-}"; do [ -n "$M" ] && echo "    - $M"; done
 echo "Log: $LOG"

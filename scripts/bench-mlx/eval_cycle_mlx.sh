@@ -18,6 +18,11 @@ export PYTHONUNBUFFERED=1
 # 各ランナーの --kv-bits 引数で指定する。
 KV_BITS=8
 
+# ctx_search の探索上限。大型モデル(15GB+)で 262144 を要求すると 25〜35GB peak +
+# swap を誘発してマシンごと落ちることがあるため、環境変数で下げられるようにする。
+# 例: HIGH_CTX=131072 ./eval_cycle_mlx.sh ...(大型モデルの再開時に推奨)
+HIGH_CTX="${HIGH_CTX:-262144}"
+
 # 「Mac は大型モデルが載るが遅い、その原因」を語るための最小構成。
 # Qwen3.5 dense のサイズ階段(4B→9B→27B)でアーキ固定の size→速度カーブを見せ、
 # 32B distill で極端な遅さ、MoE(DSC-V2-Lite)で「大きくても速い」対照を置く。
@@ -37,10 +42,10 @@ else
 fi
 
 # ctx 依存スイープ(decode/prefill/TTFT の ctx カーブ)を取る対象。
-# 小型と大型の 2 点で「サイズ × ctx」の両軸を見る。
+# 4B で帯域律速 vs compute 律速の分離は十分鮮明に取れたため、27B は対象外。
+# 大型モデルの max ctx 近傍 prefill は peak 25GB+ で swap 巻き添えのリスクが高い。
 SWEEP_MODELS=(
   "mlx-community/Qwen3.5-4B-MLX-4bit"
-  "mlx-community/Qwen3.5-27B-4bit"
 )
 # KV q4 対照(q8 主力に対する伸縮)を取る対象。
 KV4_MODELS=(
@@ -102,7 +107,7 @@ for M in "${MODELS[@]}"; do
 
   # ----------------- ctx_search -----------------
   echo "[1/5] ctx_search (kv_bits=$KV_BITS)"
-  if ! uv run python ctx_search_mlx.py --model "$M" --low 4096 --high 262144 \
+  if ! uv run python ctx_search_mlx.py --model "$M" --low 4096 --high "$HIGH_CTX" \
         --tolerance 4096 --safety-margin-mib 2048 --kv-bits "$KV_BITS"; then
     echo "  ERROR: ctx_search failed"
     FAILED_MODELS+=("$M:ctx_search")
@@ -173,7 +178,7 @@ for M in "${MODELS[@]}"; do
   if in_list "$M" "${KV4_MODELS[@]}"; then
     echo
     echo "[7] KV q4 control: ctx_search + speed + needle"
-    uv run python ctx_search_mlx.py --model "$M" --low 4096 --high 262144 \
+    uv run python ctx_search_mlx.py --model "$M" --low 4096 --high "$HIGH_CTX" \
         --tolerance 4096 --safety-margin-mib 2048 --kv-bits 4 || \
       FAILED_MODELS+=("$M:ctx_search_q4")
     CTX4_FILE=$(ls -t "results"/*/"ctx_search_${SANITIZED}.json" 2>/dev/null | head -1)

@@ -2,20 +2,27 @@
 
 [docs/06-evaluation.md](../../docs/06-evaluation.md) の評価方法論を **Apple Silicon / MLX 環境向け** に実装した計測スクリプト群。Linux + CUDA + Ollama 版は [scripts/bench/](../bench/)。
 
-機能は bench/ と同じ:**速度計測 / 最大 ctx 二分探索 / KV キャッシュ切替 / Needle In A Haystack / Coding 評価 / Summary 評価**。
+機能は bench/ と同じ:**速度計測 / 最大 ctx 二分探索 / KV キャッシュ切替 / Needle In A Haystack / Coding 評価 / Summary 評価**。加えて Mac の「なぜ遅いか」分析用に **ctx 依存スイープ(`run_ctx_sweep_mlx.py`)** を持つ。
+
+> **計測の妥当性メモ**:
+>
+> - 全ランナーは load 直後に warmup(1 token)を入れ、Metal shader 初回 JIT を本計測から外す
+> - KV は `--kv-bits 8` を主力(RTX 主力 pass の q8_0 と同条件)。`eval_cycle_mlx.sh` は Qwen3.5-9B のみ q4 対照も取る
+> - needle/coding/summary は `finish_reason` / `truncated` を保存。思考強制モデル(DeepSeek-R1 distill は chat template が `<think>` を強制)が num_predict を食い潰して途中打ち切りしていないかを検証できる
+> - `aggregate_mlx.py` は `--kv-bits`(既定 8)で metadata の kv_bits を見て集計対象を絞り、q4/q8 混成行を防ぐ
 
 ## 前提環境
 
-| 項目 | バージョン / 内容 | 用途 |
-| --- | --- | --- |
-| OS | **macOS 14 以上(動作確認は 26.3)** | mlx-metal / unified memory 前提 |
-| Chip | **Apple Silicon (M1 〜 M4)** | MLX は ARM64 専用、Intel Mac では動かない |
-| Python | **3.11 以上** | `pyproject.toml` で指定 |
-| uv | 0.8 以上 | 依存管理と仮想環境 |
-| mlx | **0.31 以上** | Apple MLX フレームワーク |
-| mlx-lm | **0.31 以上** | LLM 用ラッパー、ストリーミング生成・KV 量子化サポート |
-| huggingface_hub | 0.24 以上 | `mlx-community/*` モデル取得 |
-| git | 任意 | `metadata_mlx.py` がコミット hash を採取するため |
+| 項目            | バージョン / 内容                  | 用途                                                  |
+| --------------- | ---------------------------------- | ----------------------------------------------------- |
+| OS              | **macOS 14 以上(動作確認は 26.3)** | mlx-metal / unified memory 前提                       |
+| Chip            | **Apple Silicon (M1 〜 M4)**       | MLX は ARM64 専用、Intel Mac では動かない             |
+| Python          | **3.11 以上**                      | `pyproject.toml` で指定                               |
+| uv              | 0.8 以上                           | 依存管理と仮想環境                                    |
+| mlx             | **0.31 以上**                      | Apple MLX フレームワーク                              |
+| mlx-lm          | **0.31 以上**                      | LLM 用ラッパー、ストリーミング生成・KV 量子化サポート |
+| huggingface_hub | 0.24 以上                          | `mlx-community/*` モデル取得                          |
+| git             | 任意                               | `metadata_mlx.py` がコミット hash を採取するため      |
 
 [docs/mac/01-setup.md](../../docs/mac/01-setup.md) でセットアップ手順、ハードウェア事前確認、ストアアプリ停止などを確認すること。
 
@@ -211,14 +218,14 @@ uv run python aggregate_mlx.py | tee /tmp/results_table.md
 
 ## 既知の制約 / 注意点
 
-| 項目 | 内容 | 対処 |
-| --- | --- | --- |
-| **mlx-lm のバージョン依存** | KV 量子化 API は 0.20 以降。`peak_memory` フィールドは 0.21 以降 | `pyproject.toml` で `mlx-lm>=0.20` を固定。出力 JSON にバージョン記録 |
-| **同一プロセス再ロード** | model オブジェクトを del + `mx.clear_cache()` してもピーク値は残る | 計測は **必ず別プロセス**で実行する(bench-mlx スクリプトはこれを守っている) |
-| **ctx_search の prefill コスト** | 長 ctx プローブは時間が線形にかかる | Pass 1 では `--tolerance` を粗めにする(8192 など) |
-| **macOS の swap 動作** | OOM ではなく swap に逃げる挙動。`peak_memory` が `working_set` 超過しても例外にならない | `effective_gpu_limit_mib - safety_margin` の閾値で NG 判定する |
-| **iogpu.wired_limit_mb の sysctl** | 設定すると OS 全体に効く | 計測終了後は 0 に戻すか、再起動で消えるのを許容 |
-| **HF rate limit** | 未認証では 5GB/h 程度で詰まることあり | `HF_TOKEN` を設定 |
+| 項目                               | 内容                                                                                    | 対処                                                                        |
+| ---------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **mlx-lm のバージョン依存**        | KV 量子化 API は 0.20 以降。`peak_memory` フィールドは 0.21 以降                        | `pyproject.toml` で `mlx-lm>=0.20` を固定。出力 JSON にバージョン記録       |
+| **同一プロセス再ロード**           | model オブジェクトを del + `mx.clear_cache()` してもピーク値は残る                      | 計測は **必ず別プロセス**で実行する(bench-mlx スクリプトはこれを守っている) |
+| **ctx_search の prefill コスト**   | 長 ctx プローブは時間が線形にかかる                                                     | Pass 1 では `--tolerance` を粗めにする(8192 など)                           |
+| **macOS の swap 動作**             | OOM ではなく swap に逃げる挙動。`peak_memory` が `working_set` 超過しても例外にならない | `effective_gpu_limit_mib - safety_margin` の閾値で NG 判定する              |
+| **iogpu.wired_limit_mb の sysctl** | 設定すると OS 全体に効く                                                                | 計測終了後は 0 に戻すか、再起動で消えるのを許容                             |
+| **HF rate limit**                  | 未認証では 5GB/h 程度で詰まることあり                                                   | `HF_TOKEN` を設定                                                           |
 
 ## 新規 Mac 環境で評価を一通り実施する手順
 
@@ -248,11 +255,11 @@ killall ollama 2>/dev/null
 
 目安:
 
-| 重みサイズ vs `max_recommended_working_set` | 判断 |
-| --- | --- |
-| 重み ≤ 上限 × 0.5 | 余裕。8bit も含めて評価対象 |
-| 重み = 上限 − 2〜5 GB | 境界。KV 量子化必須、長 ctx は厳しい |
-| 重み > 上限 | 4bit でも乗らないなら対象外 |
+| 重みサイズ vs `max_recommended_working_set` | 判断                                 |
+| ------------------------------------------- | ------------------------------------ |
+| 重み ≤ 上限 × 0.5                           | 余裕。8bit も含めて評価対象          |
+| 重み = 上限 − 2〜5 GB                       | 境界。KV 量子化必須、長 ctx は厳しい |
+| 重み > 上限                                 | 4bit でも乗らないなら対象外          |
 
 ### 3. docs/04-results.md に新規 Mac セクションを起こす
 

@@ -8,15 +8,15 @@ mlx-lm を計測しやすい状態に整えるところまで。Linux + CUDA + O
 
 Mac/MLX 環境の特徴(Linux + CUDA との主な差分):
 
-| 観点 | Linux + CUDA (Ollama) | Mac + MLX (mlx-lm) |
-| --- | --- | --- |
-| 推論ランタイム | Ollama (llama.cpp + CUDA) | mlx-lm (MLX, Apple 純正) |
-| メモリ | 専用 VRAM | ユニファイドメモリ(CPU と共用) |
-| メモリ計測 | `nvidia-smi` | `mlx.get_peak_memory()` |
-| KV キャッシュ量子化 | systemd 環境変数 → サーバ再起動 | リクエスト時引数 `kv_bits=4|8` |
-| Flash Attention | `OLLAMA_FLASH_ATTENTION=1` | mlx-lm 既定 SDPA(明示ノブなし) |
-| サービス常駐 | `systemctl ollama` | 不要(Python プロセスで完結) |
-| モデルフォーマット | GGUF | MLX safetensors (HF `mlx-community/*`) |
+| 観点                | Linux + CUDA (Ollama)           | Mac + MLX (mlx-lm)                     |
+| ------------------- | ------------------------------- | -------------------------------------- | --- |
+| 推論ランタイム      | Ollama (llama.cpp + CUDA)       | mlx-lm (MLX, Apple 純正)               |
+| メモリ              | 専用 VRAM                       | ユニファイドメモリ(CPU と共用)         |
+| メモリ計測          | `nvidia-smi`                    | `mlx.get_peak_memory()`                |
+| KV キャッシュ量子化 | systemd 環境変数 → サーバ再起動 | リクエスト時引数 `kv_bits=4            | 8`  |
+| Flash Attention     | `OLLAMA_FLASH_ATTENTION=1`      | mlx-lm 既定 SDPA(明示ノブなし)         |
+| サービス常駐        | `systemctl ollama`              | 不要(Python プロセスで完結)            |
+| モデルフォーマット  | GGUF                            | MLX safetensors (HF `mlx-community/*`) |
 
 ## 1. ハードウェア事前確認
 
@@ -45,13 +45,13 @@ df -h
 
 **注目するポイント**
 
-| 項目 | 影響 |
-| --- | --- |
-| ユニファイドメモリ総量 | モデル重み + KV キャッシュ + OS / アプリ常駐分が同じプールから取られる |
-| `max_recommended_working_set_size` | Metal が同時確保すべきでない上限(byte)。**これが「実効 VRAM」**として機能する |
-| `max_buffer_length` | 単一バッファ上限。極端に大きなモデル重みを 1 テンソルで割り当てる時に効く |
-| Apple GPU 世代 | M1 (G13G) → M2 (G14G) → M3 (G15G) → M4 (G16S)。世代で MLX の最適化サポートが変わる |
-| 既存ランタイム | LM Studio / Ollama Metal が常駐していると VRAM を奪うため、計測時は停止 |
+| 項目                               | 影響                                                                               |
+| ---------------------------------- | ---------------------------------------------------------------------------------- |
+| ユニファイドメモリ総量             | モデル重み + KV キャッシュ + OS / アプリ常駐分が同じプールから取られる             |
+| `max_recommended_working_set_size` | Metal が同時確保すべきでない上限(byte)。**これが「実効 VRAM」**として機能する      |
+| `max_buffer_length`                | 単一バッファ上限。極端に大きなモデル重みを 1 テンソルで割り当てる時に効く          |
+| Apple GPU 世代                     | M1 (G13G) → M2 (G14G) → M3 (G15G) → M4 (G16S)。世代で MLX の最適化サポートが変わる |
+| 既存ランタイム                     | LM Studio / Ollama Metal が常駐していると VRAM を奪うため、計測時は停止            |
 
 参考(M4 Pro 48GB の場合):
 
@@ -109,15 +109,15 @@ launchctl unload ~/Library/LaunchAgents/com.ollama.* 2>/dev/null || true
 
 ## 5. 主要な MLX パラメータ
 
-Linux 版の OLLAMA_* 環境変数に相当する MLX 側のノブ。Linux では systemd で固定したが、**MLX ではリクエストごとに渡せる**ため起動時の固定は不要。
+Linux 版の OLLAMA\_\* 環境変数に相当する MLX 側のノブ。Linux では systemd で固定したが、**MLX ではリクエストごとに渡せる**ため起動時の固定は不要。
 
-| パラメータ | 既定 | 計測時の推奨 | 役割 |
-| --- | --- | --- | --- |
-| `max_kv_size` | None (無制限) | テスト対象の ctx 値 | KV キャッシュ最大長。超えた分は古い側から捨てられる |
-| `prefill_step_size` | 2048 | 2048 | プロンプト処理のチャンクサイズ。長プロンプト時の中間メモリに効く |
-| `kv_bits` | None (非量子化) | `4` または `8` | KV キャッシュの量子化。長 ctx の VRAM 削減に効く |
-| `kv_group_size` | 64 | 64 | KV 量子化のグループサイズ |
-| `quantized_kv_start` | 0 | 0 | 何トークン目から KV を量子化するか |
+| パラメータ           | 既定            | 計測時の推奨        | 役割                                                             |
+| -------------------- | --------------- | ------------------- | ---------------------------------------------------------------- |
+| `max_kv_size`        | None (無制限)   | テスト対象の ctx 値 | KV キャッシュ最大長。超えた分は古い側から捨てられる              |
+| `prefill_step_size`  | 2048            | 2048                | プロンプト処理のチャンクサイズ。長プロンプト時の中間メモリに効く |
+| `kv_bits`            | None (非量子化) | `4` または `8`      | KV キャッシュの量子化。長 ctx の VRAM 削減に効く                 |
+| `kv_group_size`      | 64              | 64                  | KV 量子化のグループサイズ                                        |
+| `quantized_kv_start` | 0               | 0                   | 何トークン目から KV を量子化するか                               |
 
 これらは `bench-mlx/client_mlx.py` の `generate_with_metrics` で全て引数として渡せる。
 

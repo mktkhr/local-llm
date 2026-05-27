@@ -88,20 +88,27 @@ def main() -> None:
         scored_dict = scored.to_dict()
         scored_dict["response_excerpt"] = result.response_text[:600]
         scored_dict["generation_tps"] = round(result.generation_tps, 2)
+        scored_dict["generation_tokens"] = result.generation_tokens
+        scored_dict["finish_reason"] = result.finish_reason
+        scored_dict["truncated"] = result.finish_reason == "length"
         per_task.append(scored_dict)
-        print(f"   passed={scored.passed}/{scored.total} (rate={scored.pass_rate:.2f})")
+        trunc = " [TRUNCATED]" if result.finish_reason == "length" else ""
+        print(f"   passed={scored.passed}/{scored.total} (rate={scored.pass_rate:.2f}){trunc}")
 
     by_type: dict[str, list[float]] = {}
     for r in per_task:
         by_type.setdefault(r["task_type"], []).append(r["pass_rate"])
     type_summary = {t: round(sum(rs) / len(rs), 3) for t, rs in by_type.items() if rs}
 
+    truncated_count = sum(1 for r in per_task if r.get("truncated"))
     summary = {
         "model": args.model,
         "max_kv_size": args.ctx,
         "think": think,
         "kv_bits": args.kv_bits,
+        "num_predict": args.num_predict,
         "task_count": len(tasks),
+        "truncated_count": truncated_count,
         "overall_pass_rate": round(
             sum(r["pass_rate"] for r in per_task) / len(per_task), 3
         ) if per_task else 0.0,

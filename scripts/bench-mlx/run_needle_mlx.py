@@ -99,6 +99,9 @@ def main() -> None:
         "generation_tps": round(result.generation_tps, 2),
         "ttft_sec": round(result.ttft_sec, 3),
         "peak_memory_mib": round(result.peak_memory_mib_mx, 1),
+        "finish_reason": result.finish_reason,
+        "num_predict": args.num_predict,
+        "truncated": result.finish_reason == "length",
     }
 
     sanitized = args.model.replace(":", "_").replace("/", "_")

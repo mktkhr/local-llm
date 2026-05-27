@@ -18,31 +18,16 @@ export PYTHONUNBUFFERED=1
 # 各ランナーの --kv-bits 引数で指定する。
 KV_BITS=8
 
+# 「Mac は大型モデルが載るが遅い、その原因」を語るための最小構成。
+# Qwen3.5 dense のサイズ階段(4B→9B→27B)でアーキ固定の size→速度カーブを見せ、
+# 32B distill で極端な遅さ、MoE(DSC-V2-Lite)で「大きくても速い」対照を置く。
+# 増やす場合は後から引数で追加する方針。
 DEFAULT_MODELS=(
-  # 小型 (< 5 GB)
-  "mlx-community/Qwen3.5-4B-MLX-4bit"
-  "mlx-community/gemma-4-e2b-it-4bit"
-  "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit"
-  "mlx-community/DeepSeek-R1-0528-Qwen3-8B-4bit"
-  "mlx-community/Qwen3.5-4B-MLX-8bit"
-  "mlx-community/gemma-4-e4b-it-4bit"
-  # 中型 (5〜10 GB)
-  "mlx-community/Qwen3.5-9B-MLX-4bit"
-  "mlx-community/DeepSeek-R1-Distill-Qwen-7B-8bit"
-  "mlx-community/DeepSeek-R1-Distill-Qwen-14B-4bit"
-  "mlx-community/DeepSeek-Coder-V2-Lite-Instruct-4bit-mlx"
-  "mlx-community/gemma-4-e4b-it-8bit"
-  "mlx-community/Qwen3.5-9B-MLX-8bit"
-  # 大型 (10〜20 GB)
-  "mlx-community/DeepSeek-Coder-V2-Lite-Instruct-8bit"
-  "mlx-community/gemma-4-26b-a4b-it-4bit"
-  "mlx-community/Qwen3.5-27B-4bit"
-  "mlx-community/Qwen3.6-27B-4bit"
-  "mlx-community/gemma-4-31b-it-4bit"
-  "mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit"
-  # 極大 (~30 GB)、KV 余地が狭いがとりあえず測る
-  "mlx-community/Qwen3.5-27B-8bit"
-  "mlx-community/Qwen3.6-27B-8bit"
+  "mlx-community/Qwen3.5-4B-MLX-4bit"                       # 2.85 GB, 256K, RTX 直接比較
+  "mlx-community/Qwen3.5-9B-MLX-4bit"                       # 5.57 GB, RTX 直接比較
+  "mlx-community/DeepSeek-Coder-V2-Lite-Instruct-4bit-mlx"  # 8.24 GB, MoE 対照
+  "mlx-community/Qwen3.5-27B-4bit"                          # 14.98 GB, RTX 不可
+  "mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit"         # 17.18 GB, 最大 dense
 )
 
 if [ "$#" -gt 0 ]; then
@@ -50,6 +35,24 @@ if [ "$#" -gt 0 ]; then
 else
   MODELS=("${DEFAULT_MODELS[@]}")
 fi
+
+# ctx 依存スイープ(decode/prefill/TTFT の ctx カーブ)を取る対象。
+# 小型と大型の 2 点で「サイズ × ctx」の両軸を見る。
+SWEEP_MODELS=(
+  "mlx-community/Qwen3.5-4B-MLX-4bit"
+  "mlx-community/Qwen3.5-27B-4bit"
+)
+# KV q4 対照(q8 主力に対する伸縮)を取る対象。
+KV4_MODELS=(
+  "mlx-community/Qwen3.5-9B-MLX-4bit"
+)
+
+in_list() {
+  local needle="$1"; shift
+  local x
+  for x in "$@"; do [ "$x" = "$needle" ] && return 0; done
+  return 1
+}
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -130,6 +133,8 @@ for M in "${MODELS[@]}"; do
     FAILED_MODELS+=("$M:speed")
 
   # ----------------- needle -----------------
+  # num_predict は 2048。思考強制モデル(DSR1 系)が <think> を吐いてから needle 回答に
+  # 届くだけの予算を確保する。非思考モデルは回答後 EOS で早期停止するので無害。
   echo
   echo "[3/5] needle @ depth=100% pos=50% kv_bits=$KV_BITS"
   NEEDLE="data/needle/${SANITIZED}_d100_p50.json"
@@ -137,20 +142,53 @@ for M in "${MODELS[@]}"; do
   NEEDLE_CHARS=$(( CTX * 9 / 10 ))
   uv run python data/needle/generate.py --chars "$NEEDLE_CHARS" --position-pct 0.5 \
       --output "$NEEDLE"
-  uv run python run_needle_mlx.py --model "$M" --ctx "$CTX" --needle "$NEEDLE" --kv-bits "$KV_BITS" || \
-    FAILED_MODELS+=("$M:needle")
+  uv run python run_needle_mlx.py --model "$M" --ctx "$CTX" --needle "$NEEDLE" \
+      --kv-bits "$KV_BITS" --num-predict 2048 || FAILED_MODELS+=("$M:needle")
 
-  # ----------------- coding -----------------
+  # ----------------- coding (難タスク tasks_hard) -----------------
+  # num_predict 8192: 思考強制モデルが思考 + コードを両方収めるための予算。
+  # 非思考モデル(Qwen / DSC-V2)は EOS で早期停止するので RTX(3072)と同一出力。
   echo
-  echo "[4/5] coding @ ctx=16384 kv_bits=$KV_BITS"
+  echo "[4/5] coding_hard @ ctx=16384 kv_bits=$KV_BITS"
   uv run python run_coding_mlx.py --model "$M" --ctx 16384 --kv-bits "$KV_BITS" \
-      --tasks data/coding/tasks.json || FAILED_MODELS+=("$M:coding")
+      --num-predict 8192 --tasks data/coding/tasks_hard.json || FAILED_MODELS+=("$M:coding")
 
   # ----------------- summary -----------------
+  # num_predict 4096: 同上(RTX think=true 知見で思考は最低 4096 必要)
   echo
   echo "[5/5] summary @ ctx=16384 kv_bits=$KV_BITS"
   uv run python run_summary_mlx.py --model "$M" --ctx 16384 --kv-bits "$KV_BITS" \
-      --meetings data/summary/meetings.json || FAILED_MODELS+=("$M:summary")
+      --num-predict 4096 --meetings data/summary/meetings.json || FAILED_MODELS+=("$M:summary")
+
+  # ----------------- ctx 依存スイープ(対象モデルのみ) -----------------
+  if in_list "$M" "${SWEEP_MODELS[@]}"; then
+    echo
+    echo "[6] ctx_sweep (kv_bits=$KV_BITS, max_ctx=$CTX)"
+    uv run python run_ctx_sweep_mlx.py --model "$M" --kv-bits "$KV_BITS" \
+        --ctx-points 4096,16384,65536 --max-ctx "$CTX" --num-predict 64 || \
+      FAILED_MODELS+=("$M:ctx_sweep")
+  fi
+
+  # ----------------- KV q4 対照(対象モデルのみ) -----------------
+  if in_list "$M" "${KV4_MODELS[@]}"; then
+    echo
+    echo "[7] KV q4 control: ctx_search + speed + needle"
+    uv run python ctx_search_mlx.py --model "$M" --low 4096 --high 262144 \
+        --tolerance 4096 --safety-margin-mib 2048 --kv-bits 4 || \
+      FAILED_MODELS+=("$M:ctx_search_q4")
+    CTX4_FILE=$(ls -t "results"/*/"ctx_search_${SANITIZED}.json" 2>/dev/null | head -1)
+    CTX4=$(python3 -c "import json; print(json.load(open('$CTX4_FILE'))['max_ctx'])" 2>/dev/null || echo 0)
+    if [ "$CTX4" != "0" ]; then
+      echo "  q4 max_ctx=$CTX4"
+      uv run python run_speed_mlx.py --model "$M" --ctx "$CTX4" --kv-bits 4 || \
+        FAILED_MODELS+=("$M:speed_q4")
+      NEEDLE4="data/needle/${SANITIZED}_q4_d100_p50.json"
+      uv run python data/needle/generate.py --chars "$(( CTX4 * 9 / 10 ))" \
+          --position-pct 0.5 --output "$NEEDLE4"
+      uv run python run_needle_mlx.py --model "$M" --ctx "$CTX4" --needle "$NEEDLE4" \
+          --kv-bits 4 --num-predict 2048 || FAILED_MODELS+=("$M:needle_q4")
+    fi
+  fi
 
   # ----------------- cleanup -----------------
   echo

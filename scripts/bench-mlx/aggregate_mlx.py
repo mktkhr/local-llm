@@ -18,25 +18,10 @@ from typing import Any
 
 DEFAULT_MODELS = [
     "mlx-community/Qwen3.5-4B-MLX-4bit",
-    "mlx-community/Qwen3.5-4B-MLX-8bit",
     "mlx-community/Qwen3.5-9B-MLX-4bit",
-    "mlx-community/Qwen3.5-9B-MLX-8bit",
-    "mlx-community/Qwen3.5-27B-4bit",
-    "mlx-community/Qwen3.5-27B-8bit",
-    "mlx-community/Qwen3.6-27B-4bit",
-    "mlx-community/Qwen3.6-27B-8bit",
-    "mlx-community/gemma-4-e2b-it-4bit",
-    "mlx-community/gemma-4-e4b-it-4bit",
-    "mlx-community/gemma-4-e4b-it-8bit",
-    "mlx-community/gemma-4-26b-a4b-it-4bit",
-    "mlx-community/gemma-4-31b-it-4bit",
-    "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit",
-    "mlx-community/DeepSeek-R1-Distill-Qwen-7B-8bit",
-    "mlx-community/DeepSeek-R1-0528-Qwen3-8B-4bit",
-    "mlx-community/DeepSeek-R1-Distill-Qwen-14B-4bit",
-    "mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit",
     "mlx-community/DeepSeek-Coder-V2-Lite-Instruct-4bit-mlx",
-    "mlx-community/DeepSeek-Coder-V2-Lite-Instruct-8bit",
+    "mlx-community/Qwen3.5-27B-4bit",
+    "mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit",
 ]
 
 
@@ -53,23 +38,41 @@ def load_json(path: Path | None) -> dict[str, Any] | None:
         return None
 
 
-def find_latest(results_dir: Path, pattern: str) -> Path | None:
+def _result_kv_bits(result_file: Path) -> Any:
+    """同じディレクトリの metadata.json から extra.kv_bits を取得。無ければ None。"""
+    meta = load_json(result_file.parent / "metadata.json")
+    if meta is None:
+        return None
+    return meta.get("extra", {}).get("kv_bits")
+
+
+def find_latest(results_dir: Path, pattern: str, kv_bits: Any = "ANY") -> Path | None:
+    """pattern にマッチする最新ファイルを返す。
+
+    kv_bits が "ANY" 以外なら、同ディレクトリ metadata.json の extra.kv_bits が
+    一致するものだけに絞る(q4/q8/f16 の混成行を防ぐ)。
+    """
     matches = list(results_dir.rglob(pattern))
+    if kv_bits != "ANY":
+        matches = [m for m in matches if _result_kv_bits(m) == kv_bits]
     if not matches:
         return None
     return max(matches, key=lambda p: p.stat().st_mtime)
 
 
-def collect_for_model(results_dir: Path, model: str) -> dict[str, Any]:
+def collect_for_model(results_dir: Path, model: str, kv_bits: Any = "ANY") -> dict[str, Any]:
     s = sanitize(model)
-    row: dict[str, Any] = {"model": model}
+    row: dict[str, Any] = {"model": model, "filter_kv_bits": kv_bits}
 
-    if (d := load_json(find_latest(results_dir, f"ctx_search_{s}.json"))) is not None:
+    def latest(pat: str) -> Path | None:
+        return find_latest(results_dir, pat, kv_bits)
+
+    if (d := load_json(latest(f"ctx_search_{s}.json"))) is not None:
         row["max_ctx"] = d.get("max_ctx")
         row["ctx_search_probes"] = len(d.get("history", []))
         row["model_max_position"] = d.get("model_max_position")
 
-    if (d := load_json(find_latest(results_dir, f"speed_{s}_ctx*.json"))) is not None:
+    if (d := load_json(latest(f"speed_{s}_ctx*.json"))) is not None:
         row["generation_tps"] = d.get("generation_tps")
         row["prompt_tps"] = d.get("prompt_tps")
         row["ttft_sec"] = d.get("ttft_sec")
@@ -77,16 +80,22 @@ def collect_for_model(results_dir: Path, model: str) -> dict[str, Any]:
         row["requested_ctx"] = d.get("max_kv_size")
         row["kv_bits"] = d.get("kv_bits")
 
-    if (d := load_json(find_latest(results_dir, f"needle_{s}_ctx*.json"))) is not None:
+    if (d := load_json(latest(f"needle_{s}_ctx*.json"))) is not None:
         row["needle_success"] = d.get("success")
         row["needle_position_pct"] = d.get("position_pct")
+        row["needle_prefill_tps"] = d.get("prompt_tps")
+        row["needle_ttft_sec"] = d.get("ttft_sec")
+        row["needle_decode_tps"] = d.get("generation_tps")
+        row["needle_truncated"] = d.get("truncated")
 
-    if (d := load_json(find_latest(results_dir, f"coding_{s}_ctx*.json"))) is not None:
+    if (d := load_json(latest(f"coding_{s}_ctx*.json"))) is not None:
         row["coding_pass_rate"] = d.get("overall_pass_rate")
         row["coding_by_type"] = d.get("by_task_type", {})
+        row["coding_truncated"] = d.get("truncated_count")
 
-    if (d := load_json(find_latest(results_dir, f"summary_{s}_ctx*.json"))) is not None:
+    if (d := load_json(latest(f"summary_{s}_ctx*.json"))) is not None:
         row["summary_match_rate"] = d.get("overall_match_rate")
+        row["summary_truncated"] = d.get("truncated_count")
 
     return row
 
@@ -175,12 +184,18 @@ def main() -> None:
         type=Path,
         default=Path(__file__).parent / "results",
     )
+    parser.add_argument(
+        "--kv-bits",
+        default="8",
+        help="集計対象を絞る KV bits(metadata の extra.kv_bits)。'any' で全部混ぜる(非推奨)。既定 8",
+    )
     args = parser.parse_args()
 
+    kv_filter: Any = "ANY" if args.kv_bits.lower() == "any" else int(args.kv_bits)
     models = args.models or DEFAULT_MODELS
-    rows = [collect_for_model(args.results_dir, m) for m in models]
+    rows = [collect_for_model(args.results_dir, m, kv_filter) for m in models]
 
-    print("## Main table")
+    print(f"## Main table (KV filter = {kv_filter})")
     print()
     print(format_main_table(rows))
     print()

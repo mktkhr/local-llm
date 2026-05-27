@@ -582,146 +582,119 @@ Qwen3 系 / Gemma 系 / DeepSeek 系を対象とする(ユーザー選択)。各
 
 本評価では `safety_margin = 2048 MiB` を採用し、ピーク使用量が `37.44 - 2 = 35.4 GiB ≈ 36247 MiB` 以下に収まる構成のみ「100% GPU 動作」とみなす。
 
-### 評価対象選定(2026-05-26 時点 mlx-community 調査)
+### 評価対象選定(2026-05-27 改訂)
 
-[huggingface.co/mlx-community](https://huggingface.co/mlx-community) で実在確認済みのタグから、RTX 4080 SUPER (16GB) と直接比較できる Qwen3.5 / Gemma 4 / DeepSeek-R1 / DeepSeek-Coder-V2 系列 +、48GB なら載る 27B〜32B 級を追加した。
+本セクションの問いは **「48GB の Mac は 16GB GPU に載らない大型モデルを動かせるが、どれだけ遅いのか / なぜ遅いのか」**。それを最小手数で語るため、Qwen3.5 dense のサイズ階段(4B→9B→27B)でアーキを固定した速度カーブを取り、両端に「最大 dense (32B)」と「大きいのに速い MoE」を置いた 5 モデルに絞った。重み量子化は **全て 4bit**(8bit は帯域を食って decode が遅くなるだけで、RTX 評価でも q8 は無益と確認済み)。KV は **q8**(RTX 主力 pass と同条件)。
 
-#### 対象モデル
+#### 対象モデル(5 本)
 
-##### Qwen3.5 系(汎用)
+| HF タグ                                                  | 重み   | 役割                                            | RTX 対応              |
+| -------------------------------------------------------- | ------ | ----------------------------------------------- | --------------------- |
+| `mlx-community/Qwen3.5-4B-MLX-4bit`                      | 2.85 GB | サイズ階段の底、256K ctx                        | 同タグ相当あり(直接比較) |
+| `mlx-community/Qwen3.5-9B-MLX-4bit`                      | 5.57 GB | サイズ階段の中                                  | 同タグ相当あり(直接比較) |
+| `mlx-community/DeepSeek-Coder-V2-Lite-Instruct-4bit-mlx` | 8.24 GB | MoE 16B(実効 2.4B)。「大きいのに速い」対照     | 同タグ相当あり(直接比較) |
+| `mlx-community/Qwen3.5-27B-4bit`                         | 14.98 GB | サイズ階段の上。**16GB GPU には載らない**       | 4080 不可             |
+| `mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit`        | 17.18 GB | 最大 dense。**遅さの極北**                       | 4080 不可             |
 
-| HF タグ                                | 重み量子化 | 既定 ctx | ねらい                              |
-| -------------------------------------- | ---------- | -------- | ----------------------------------- |
-| `mlx-community/Qwen3.5-4B-MLX-4bit`    | 4bit       | (確認後) | 4080 の `qwen3.5:4b-q4_K_M` 相当    |
-| `mlx-community/Qwen3.5-4B-MLX-8bit`    | 8bit       | (確認後) | 4080 の `qwen3.5:4b-q8_0` 相当      |
-| `mlx-community/Qwen3.5-9B-MLX-4bit`    | 4bit       | (確認後) | 4080 の `qwen3.5:9b-q4_K_M` 相当    |
-| `mlx-community/Qwen3.5-9B-MLX-8bit`    | 8bit       | (確認後) | 4080 の `qwen3.5:9b-q8_0` 相当      |
-| `mlx-community/Qwen3.5-27B-4bit`       | 4bit       | (確認後) | **48GB 追加**: 4080 不可だった 27B  |
-| `mlx-community/Qwen3.5-27B-8bit`       | 8bit       | (確認後) | **48GB 追加**: 27B 品質上限(KV 余地は薄い、計測で確認) |
+#### 対象外と理由
 
-##### Qwen3.6 系(最新 dense)
+| HF タグ / 重み                                                | 理由                                                                                            |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `mlx-community/gemma-4-e2b-it-4bit` / `gemma-4-e4b-it-*`       | Gemma 4 `e*` はマルチモーダル(`language_model.*` 名前空間)で mlx-lm 0.31.3 が load 不可(実測で確認、後述) |
+| 全 `*-8bit` 変種(Qwen3.5 4B/9B、DSC-V2-Lite ほか)            | 4bit より重み帯域を食って decode が遅くなるだけ。RTX 評価でも q8 重み量子化は無益と判明済み      |
+| `mlx-community/Qwen3.6-27B-*` / `gemma-4-26b-a4b` / `gemma-4-31b` | まず Qwen 軸を綺麗に取る方針。必要なら後から追加 pull する                                       |
+| `mlx-community/Qwen3.5-122B-A10B-4bit` / `Qwen2.5-72B-Instruct-4bit` 等 | 重み 40〜60GB+ で 48GB ユニファイドメモリに乗らない / KV 余地ゼロ                            |
 
-| HF タグ                          | 重み量子化 | 既定 ctx | ねらい                                                          |
-| -------------------------------- | ---------- | -------- | --------------------------------------------------------------- |
-| `mlx-community/Qwen3.6-27B-4bit` | 4bit       | (確認後) | **48GB 追加**: 4080 で 16GB 量子化タグが無く対象外だった Qwen3.6 |
-| `mlx-community/Qwen3.6-27B-8bit` | 8bit       | (確認後) | **48GB 追加**: 27B 品質上限(KV 余地は薄い、計測で確認)         |
+> **2026-05-26 の初回計測について**: KV を f16(非量子化)、warmup 無しで 6 モデルを測ったが、(1) RTX 主力 pass の KV q8 と条件が揃わない、(2) Metal shader の初回 JIT コンパイルが TTFT に混入する、の 2 点で比較に使えないことが判明。**KV q8 + warmup に揃えて全モデル再計測**する(`scripts/bench-mlx/` の修正コミット参照)。以下の表は再計測後に確定。
 
-##### Gemma 4 系(マルチモーダル / MoE)
-
-| HF タグ                                  | 重み量子化 | 既定 ctx | ねらい                                                          |
-| ---------------------------------------- | ---------- | -------- | --------------------------------------------------------------- |
-| `mlx-community/gemma-4-e2b-it-4bit`      | 4bit       | (確認後) | 4080 の `gemma4:e2b-it-q4_K_M` 相当                              |
-| `mlx-community/gemma-4-e4b-it-4bit`      | 4bit       | (確認後) | 4080 の `gemma4:e4b-it-q4_K_M` 相当(マルチモーダル主力)         |
-| `mlx-community/gemma-4-e4b-it-8bit`      | 8bit       | (確認後) | 4080 の `gemma4:e4b-it-q8_0` 相当                                |
-| `mlx-community/gemma-4-26b-a4b-it-4bit`  | 4bit (MoE) | (確認後) | **48GB 追加**: Gemma 4 26B MoE (実効 4B)、4080 で対象外だった   |
-| `mlx-community/gemma-4-31b-it-4bit`      | 4bit dense | (確認後) | **48GB 追加**: Gemma 4 31B dense、4080 で対象外だった           |
-
-##### DeepSeek-R1 系(思考特化 distill)
-
-| HF タグ                                              | 重み量子化 | 既定 ctx | ねらい                                                |
-| ---------------------------------------------------- | ---------- | -------- | ----------------------------------------------------- |
-| `mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit`     | 4bit       | (確認後) | 4080 の `deepseek-r1:7b-qwen-distill-q4_K_M` 相当      |
-| `mlx-community/DeepSeek-R1-Distill-Qwen-7B-8bit`     | 8bit       | (確認後) | 4080 の `deepseek-r1:7b-qwen-distill-q8_0` 相当        |
-| `mlx-community/DeepSeek-R1-0528-Qwen3-8B-4bit`       | 4bit       | (確認後) | 4080 の `deepseek-r1:8b-0528-qwen3-q4_K_M` 相当        |
-| `mlx-community/DeepSeek-R1-Distill-Qwen-14B-4bit`    | 4bit       | (確認後) | 4080 の `deepseek-r1:14b-qwen-distill-q4_K_M` 相当     |
-| `mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit`    | 4bit       | (確認後) | **48GB 追加**: 4080 で対象外だった 32B                 |
-
-##### DeepSeek-Coder-V2 系(コーディング MoE)
-
-| HF タグ                                                       | 重み量子化 | 既定 ctx | ねらい                                                 |
-| ------------------------------------------------------------- | ---------- | -------- | ------------------------------------------------------ |
-| `mlx-community/DeepSeek-Coder-V2-Lite-Instruct-4bit-mlx`      | 4bit       | (確認後) | 4080 の `deepseek-coder-v2:16b-lite-instruct-q4_0` 相当 |
-| `mlx-community/DeepSeek-Coder-V2-Lite-Instruct-8bit`          | 8bit       | (確認後) | **48GB 追加**: 4bit との品質差を見る                    |
-
-#### 対象外と理由(暫定)
-
-| HF タグ / 重み                                                | 重みサイズ (実測)  | 理由                                                                                            |
-| ------------------------------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------- |
-| `mlx-community/Qwen3.5-122B-A10B-4bit` / `Qwen3.5-397B-A17B-4bit` | 60+ GB          | 48GB ユニファイドメモリに乗らない                                                               |
-| `mlx-community/Qwen2.5-72B-Instruct-4bit`                     | 約 40 GB           | working_set 37GB を超過、KV 余地ほぼゼロ                                                        |
-| `mlx-community/Qwen3.5-35B-A3B-4bit`                          | 約 18 GB           | MoE、興味深いが本評価のスコープ拡大を避けて見送り                                               |
-| `mlx-community/gemma-4-e4b-it-8bit`                           | 8.4 GB             | Gemma 4 `e*` は multimodal、e2b / e4b で既に失敗確認済み                                        |
-| `mlx-community/Qwen3.5-9B-MLX-8bit`                           | 9.7 GB             | 4bit 版で MLX の品質傾向が確認できたため省略                                                    |
-| `mlx-community/DeepSeek-Coder-V2-Lite-Instruct-8bit`          | 15.6 GB            | 4bit 版で十分傾向が見える                                                                       |
-| `mlx-community/Qwen3.5-27B-8bit` / `Qwen3.6-27B-8bit`         | 各 27.5 GB         | 重みだけで working_set の 75% を占有、KV 余地ほぼゼロで結果が自明                                |
-
-### 測定環境(2026-05-26 計測)
+### 測定環境(2026-05-27 計測)
 
 - Chip: Apple M4 Pro (8P + 4E) / 48GB Unified Memory
 - Effective GPU limit: 37.44 GiB (`max_recommended_working_set_size`)
 - OS: macOS 26.3.1 (Build 25D771280a), Darwin 25.3.0
 - mlx: 0.31.2 / mlx-lm: 0.31.3
-- 計測スクリプト: `scripts/bench-mlx/` @ git 4a879ca(+作業ブランチ未コミット)
-- 共通設定: `max_kv_size=<ctx_search の最大値>` / `kv_bits=None`(主力 pass) / `prefill_step_size=2048` / `safety_margin_mib=2048`
-- 進行: `eval_cycle_mlx.sh` で 1 モデルずつ pull → 評価 → 削除 のサイクル(計測中)
+- 計測スクリプト: `scripts/bench-mlx/` @ git(計測時 hash)
+- 共通設定: **KV q8(`--kv-bits 8`、RTX 主力 pass と同条件)** / warmup 1 token / `prefill_step_size=2048` / `safety_margin_mib=2048`
+- 進行: `eval_cycle_mlx.sh` で 1 モデルずつ pull → 評価 → 削除 のサイクル
 
-### 100% GPU 動作
+### 速度(decode / 長文 prefill)
 
-長コンテキスト・peak メモリが `working_set − 2GB` (≒ 35.4 GB) 以内、を共通条件として、各モデルの **二分探索で求めた最大 ctx での速度** を以下にまとめる。`Max ctx` 列の `*` はモデル既定 ctx 上限でキャップを示す。
+> 計測後に埋める。`Decode` は短プロンプト後の生成速度、`Needle TTFT` は max_ctx 近くまで詰めた長文 prefill の所要時間(対話 UX の長文初動)。
 
-> ⚠️ **計測中の暫定値**。`prefill_tps` は `run_speed_mlx.py` の既定プロンプトが ~60 token と短いため値が不安定(短プロンプトは前処理の固定コストが支配的)。長プロンプトでの本当の prefill 速度は **Needle テストの `prompt_tps`** を別途参照すること。
+| Model                                      | Max ctx | Peak mem (GB) | Decode tok/s | Needle prefill tok/s | Needle TTFT (s) |
+| ------------------------------------------ | ------- | ------------- | ------------ | -------------------- | --------------- |
+| Qwen3.5-4B-MLX-4bit                        | —       | —             | —            | —                    | —               |
+| Qwen3.5-9B-MLX-4bit                        | —       | —             | —            | —                    | —               |
+| DeepSeek-Coder-V2-Lite-Instruct-4bit (MoE) | —       | —             | —            | —                    | —               |
+| Qwen3.5-27B-4bit                           | —       | —             | —            | —                    | —               |
+| DeepSeek-R1-Distill-Qwen-32B-4bit          | —       | —             | —            | —                    | —               |
 
-| Model                                | Max ctx       | Decode tok/s | Prefill tok/s(short) | TTFT (s) | Peak mem (MiB) | Needle Prefill (Mtok/s) |
-| ------------------------------------ | ------------- | ------------ | -------------------- | -------- | -------------- | ----------------------- |
-| Qwen3.5-4B-MLX-4bit                  | **262144**    | 77.09        | 100.83               | 0.49     | 2,448          | 270.5 @ 235K chars      |
-| Qwen3.5-4B-MLX-8bit                  | **262144**    | 47.07        | 203.91               | 0.30     | 4,448          | 244.4 @ 235K chars      |
-| Qwen3.5-9B-MLX-4bit                  | **262144**    | 48.32        | 142.36               | 0.37     | 5,009          | 178.1 @ 235K chars      |
-| DeepSeek-R1-Distill-Qwen-7B-4bit     | 131072 `*`    | 57.21        | 121.21               | 0.35     | 4,205          | (集計中)                |
-| DeepSeek-R1-Distill-Qwen-7B-8bit     | 131072 `*`    | 31.75        | 124.69               | 0.35     | 7,797          | 127.0 @ 117K chars      |
-| DeepSeek-R1-0528-Qwen3-8B-4bit       | 131072 `*`    | 54.18        | 22.04                | 0.37     | 4,451          | (集計中)                |
+### 品質(Needle / Coding hard / Summary)
 
-### 品質評価:Needle / Coding / Summary
+> Coding は RTX と同じ難タスク (`tasks_hard.json`)。num_predict は **needle 2048 / coding 8192 / summary 4096**(後述の DSR1-32B 強制思考に対応するため RTX より大きく取るが、非思考モデルは EOS で早期停止するため出力は RTX と同一)。各結果に `truncated`(finish_reason==length)を記録し、打ち切りが無いことを検証する。
 
-| Model                              | Needle | Coding | Summary | 備考                                                          |
-| ---------------------------------- | ------ | ------ | ------- | ------------------------------------------------------------- |
-| Qwen3.5-4B-MLX-4bit                | ✓      | 1.00   | 0.81    | 4080 と同等(decode は 4080 の 57%)                            |
-| Qwen3.5-4B-MLX-8bit                | ✓      | 1.00   | 0.67    | 4080 8bit に概ね近い(4080: 1.00/0.58)。decode は 4bit の 61%   |
-| Qwen3.5-9B-MLX-4bit                | ✓      | 1.00   | 0.70    | 4080 (1.00/0.78) と近い、Summary は若干下振れ                  |
-| DeepSeek-R1-Distill-Qwen-7B-4bit   | ✗      | 0.50   | 0.20    | 4080: Needle ✗ / Coding 0.92 / Summary 0.53、MLX 4bit で大幅低下 |
-| DeepSeek-R1-Distill-Qwen-7B-8bit   | ✗      | 1.00   | 0.14    | 4080: Needle ✗ / Coding 0.98 / Summary 0.53、8bit で Coding 回復・Summary は下振れ継続 |
-| DeepSeek-R1-0528-Qwen3-8B-4bit     | ✗      | 0.67   | 0.20    | 4080: Needle ✓ / Coding 1.00 / Summary 0.75、MLX 4bit で大幅低下 |
+| Model                                      | Needle | Coding hard | Summary | truncated | 備考 |
+| ------------------------------------------ | ------ | ----------- | ------- | --------- | ---- |
+| Qwen3.5-4B-MLX-4bit                        | —      | —           | —       | —         | —    |
+| Qwen3.5-9B-MLX-4bit                        | —      | —           | —       | —         | —    |
+| DeepSeek-Coder-V2-Lite-Instruct-4bit (MoE) | —      | —           | —       | —         | —    |
+| Qwen3.5-27B-4bit                           | —      | —           | —       | —         | —    |
+| DeepSeek-R1-Distill-Qwen-32B-4bit ⚠思考強制 | —      | —           | —       | —         | think 無効化不可、後述 |
 
-#### Coding 種別内訳
+> **DSR1-32B は always-think**: chat template 末尾が `<｜Assistant｜><think>\n` で思考を強制し、`enable_thinking=False` を無視する(実測確認)。Ollama の `think:false` で測った RTX の DSR1 系とは **別タスク**(think=true 相当)。num_predict を大きく取って打ち切りを防ぐが、TTFT・総出力長・採点への思考の影響は残る。Mac の DSR1-32B 行は「思考込み」の値として読むこと。
 
-| Model                              | Overall | impl | bugfix | refactor |
-| ---------------------------------- | ------- | ---- | ------ | -------- |
-| Qwen3.5-4B-MLX-4bit                | 1.00    | 1.00 | 1.00   | 1.00     |
-| Qwen3.5-4B-MLX-8bit                | 1.00    | 1.00 | 1.00   | 1.00     |
-| Qwen3.5-9B-MLX-4bit                | 1.00    | 1.00 | 1.00   | 1.00     |
-| DeepSeek-R1-Distill-Qwen-7B-4bit   | 0.50    | 0.50 | 0.50   | 0.50     |
-| DeepSeek-R1-Distill-Qwen-7B-8bit   | 1.00    | 1.00 | 1.00   | 1.00     |
-| DeepSeek-R1-0528-Qwen3-8B-4bit     | 0.67    | 1.00 | 0.50   | 0.50     |
+### ctx 依存スイープ(decode は帯域律速 / prefill は compute 律速の分離)
 
-### 計測失敗(モデル / mlx-lm 非互換)
+> 代表 2 モデル(Qwen3.5-4B-4bit と Qwen3.5-27B-4bit)で ctx ∈ {4K, 16K, 64K, max} の decode / prefill / TTFT を計測。`run_ctx_sweep_mlx.py`。「なぜ遅いか」の核心データ。
 
-| Model                       | エラー                                                                   | 推測される原因                                                                                            |
-| --------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `mlx-community/gemma-4-e2b-it-4bit` | `ValueError: Received 140 parameters not in model: language_model.model.layers.X...` | Gemma 4 の `e2b` / `e4b` はマルチモーダル(`language_model.*` 名前空間)。mlx-lm 0.31.3 の標準テキスト LM loader が拒絶。`mlx-vlm` 必要 |
-| `mlx-community/gemma-4-e4b-it-4bit` | 同上                                                                     | 予測通り e4b も同じ構造で失敗                                                                             |
+| Model | ctx | Prefill tok/s | TTFT (s) | Decode tok/s | Peak mem (MiB) | swap Δ |
+| ----- | --- | ------------- | -------- | ------------ | -------------- | ------ |
+| (計測後) | — | — | — | — | — | — |
 
-> Gemma 4 `e2b` / `e4b` 全タグ(`e2b-4bit` / `e4b-4bit` / `e4b-8bit`)はマルチモーダルのため mlx-lm では読めない。Gemma 4 `26b-a4b`(MoE Dense) と `31b`(Dense) はマルチモーダル名前空間を持たない可能性が高く別途試行する。
+> 読み筋(計測後に確定): **decode は ctx を伸ばしても緩やかにしか落ちない**(KV 読み出しが増えるだけ、帯域律速)一方、**prefill TTFT は ctx に対し超線形に悪化**(アテンション O(ctx²)、compute 律速)。この 2 曲線の傾きの差が「短文は実用・長文初動は致命的」を定量的に示す。
 
-### 観察された MLX vs Ollama(4080)の品質差
+### KV 量子化対照(q4 vs q8、Qwen3.5-9B-4bit)
 
-中間集計の重要な傾向:
+> RTX 評価では KV `q4_0` が「ほぼフリーランチ(max ctx +10〜39%、速度劣化 ≤6%、品質維持)」と判明。Mac/MLX でも同様か 1 モデルで確認。
 
-- **MLX 4bit は GGUF Q4_K_M より品質が落ちる傾向**:DSR1 7B distill / 0528-8B で Coding / Summary とも顕著に低下した。Qwen3.5-4B-MLX-4bit は 4080 と同等を維持
-- **Needle の `think=false` 挙動**:DSR1 系列(7B / 0528-8B 含む)で Needle 失敗が増加。4080 でも 7B distill は失敗していたが、0528-8B は成功していた → MLX 4bit + think=false の組み合わせで悪化
-- **decode 速度**:Qwen3.5-4B-MLX-4bit が 77 tok/s(4080 は 134.6 tok/s)。M4 Pro の decode は 4080 の **約 57%**(メモリ帯域比 ~270 GB/s vs ~700 GB/s に概ね一致)
+| KV   | Max ctx | Decode tok/s | Needle | 備考 |
+| ---- | ------- | ------------ | ------ | ---- |
+| q8(主力) | — | — | — | — |
+| q4   | — | — | — | — |
 
-これらは中間結果。全モデル測定後に最終分析として確定させる。
+### vs RTX 4080 SUPER(同タグ直接比較)
 
-### CPU offload 相当(参考)
+> 計測後に埋める。decode の比率が「Mac はどれだけ遅いか」の核心。
 
-> Apple Silicon では明示的な「CPU offload」は存在しないが、`peak_memory > effective_gpu_limit` で macOS が swap に逃がしたケースをここに記録する。現時点では発生していない。
+| Model        | 4080 decode | M4 Pro decode | Mac 比率 |
+| ------------ | ----------- | ------------- | -------- |
+| Qwen3.5 4B   | 134.6       | —             | —        |
+| Qwen3.5 9B   | 88.9        | —             | —        |
+| DSC-V2-Lite  | 268.2       | —             | —        |
+
+### 計測失敗(mlx-lm 非互換)
+
+| Model | 原因 |
+| ----- | ---- |
+| `gemma-4-e2b-it-*` / `gemma-4-e4b-it-*` | Gemma 4 `e*` はマルチモーダル(`language_model.*` 名前空間)。mlx-lm 0.31.3 の標準テキスト LM loader が `ValueError: Received N parameters not in model` で拒絶。テキスト用途でも `mlx-vlm` が必要 |
+
+### 考察:なぜ Mac は RTX より遅いのか
+
+> 計測後に確定。骨子は以下:
+>
+> 1. **decode はメモリ帯域律速**:M4 Pro ~273 GB/s vs RTX 4080 SUPER ~736 GB/s(約 37%)。decode は毎トークン全重み + KV を読むため、速度はほぼ帯域比に張り付く。サイズ階段(4B→9B→27B→32B)で decode が単調に落ちることで裏づける
+> 2. **MoE が階段を破る**:DSC-V2-Lite は 16B だが実効 2.4B しか活性化しないため、サイズの割に速い。「遅さ = 総パラメータではなくアクティブパラメータ × 帯域」を示す対照
+> 3. **長文 prefill は compute 律速で更に不利**:M4 Pro GPU の行列演算ピークは 4080 比で更に低く(Tensor Core 相当なし)、アテンションの O(ctx²) が効く長文では TTFT が分単位に。Needle の TTFT で定量化
+> 4. **大型は載るが decode が実用域を割る**:27B/32B は 16GB GPU に載らないが Mac なら動く。ただし decode tok/s がいくつまで落ちるか(対話可否のライン)を提示
+> 5. **重み量子化アルゴリズムの差**:Ollama の Q4_K_M(K-quants)と MLX の 4bit(group quant)は別物。同じ「4bit」でも品質・速度特性が異なる点は揃えられない限界として明記
 
 ### 採用推奨(用途別)
 
-> 全モデル測定完了後に確定する。
+> 計測後に確定。
 
 ### 最終分析
 
-> 全モデル測定完了後に [docs/06-evaluation.md §9.4](06-evaluation.md) の 10 項目で執筆する。
+> 計測後に [docs/06-evaluation.md §9.4](06-evaluation.md) の 10 項目で執筆する。
 
 ---
 

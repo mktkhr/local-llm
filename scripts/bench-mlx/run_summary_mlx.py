@@ -111,6 +111,9 @@ def main() -> None:
         d = scored.to_dict()
         d["response_excerpt"] = result.response_text[:800]
         d["generation_tps"] = round(result.generation_tps, 2)
+        d["generation_tokens"] = result.generation_tokens
+        d["finish_reason"] = result.finish_reason
+        d["truncated"] = result.finish_reason == "length"
         per_meeting.append(d)
         print(f"   overall={scored.overall:.2f}")
         for c in scored.categories:
@@ -121,14 +124,17 @@ def main() -> None:
         if per_meeting
         else 0.0
     )
+    truncated_count = sum(1 for p in per_meeting if p.get("truncated"))
     summary = {
         "model": args.model,
         "max_kv_size": args.ctx,
         "think": think,
         "kv_bits": args.kv_bits,
+        "num_predict": args.num_predict,
         "ngram": args.ngram,
         "threshold": args.threshold,
         "meeting_count": len(meetings),
+        "truncated_count": truncated_count,
         "overall_match_rate": round(overall, 3),
         "peak_memory_mib": round(peak_overall, 1),
         "meetings": per_meeting,

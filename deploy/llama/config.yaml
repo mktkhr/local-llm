@@ -112,6 +112,25 @@ models:
       -b 2048 -ub 512
       --cache-reuse 256
 
+  # --- D: 256k 化(ccd)。README section 12 の実測で確定 ---
+  # ncmoe なし(フル GPU)・KV は q4_0。README section 12 の tool_use 実タスク比較
+  # (M1/M2、n=1)では JSON 破損・生トークン露出は検出されず、速度は q8_0+ncmoe 案の
+  # 2〜4 倍。ただし n=1 の検証であり、公式は q4_0 で tool calling 品質が有意に落ちると
+  # 明記しているため、異常な挙動が出たら q8_0+ncmoe 案(README section 12 D-A、ncmoe=6)
+  # に戻すことを検討する。
+  qwen36-35b-iq3s-256k:
+    name: Qwen3.6-35B-A3B (UD-IQ3_S) 256k / bench D
+    description: 256k化。オフロードなし、KV q4_0(tool calling品質は継続観察中)
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.6-35B-A3B-GGUF:UD-IQ3_S
+      --no-mmproj
+      --ctx-size 262144
+      --kv-unified
+      -ctk q4_0 -ctv q4_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
   # 量子化間比較(A vs B vs C)用の greedy 版。計画 3.1 に従い --temp 0 / n=1。
   qwen36-35b-iq3s-greedy:
     name: Qwen3.6-35B-A3B (UD-IQ3_S) greedy / bench C

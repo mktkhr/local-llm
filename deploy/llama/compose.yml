@@ -88,7 +88,30 @@ services:
       retries: 3
       start_period: 10s
 
+  ccshim-d:
+    image: python:3.13-alpine
+    container_name: ccshim-d
+    restart: unless-stopped
+    command:
+      ["python3", "/app/ccshim.py", "11438", "http://llama-swap:8080", "/log-d", "qwen36-35b-iq3s-256k"]
+    ports:
+      - "${CCSHIM_D_PORT:-11438}:11438"
+    volumes:
+      - ./:/app:ro
+      - ccshim-log-d:/log-d
+    depends_on:
+      - llama-swap
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "python3 -c \"import socket;s=socket.socket();s.settimeout(2);s.connect(('127.0.0.1',11438))\""
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
 volumes:
   llama-cache:
   ccshim-log:
   ccshim-log-c:
+  ccshim-log-d:

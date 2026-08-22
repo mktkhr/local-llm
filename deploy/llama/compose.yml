@@ -1,0 +1,94 @@
+services:
+  llama-swap:
+    # llama-swap + llama-server(llama.cpp)を同梱した統合イメージ。
+    # :cuda は CUDA 12.8 ベース(driver >= 570 が必要。本機 580.142 は OK)。
+    # 再現性のため、実運用で固まったら `docker image inspect` のダイジェストで固定する。
+    image: ghcr.io/mostlygeek/llama-swap:cuda
+    container_name: llama-swap
+    restart: unless-stopped
+    gpus: all
+    # 既定のエントリポイントは /app/config.yaml を単一ファイルで見る。
+    # 単一ファイルの bind mount はエディタが inode を置き換えると追随しないため、
+    # ディレクトリをマウントして -watch-config を実際に機能させる。
+    entrypoint: ["/app/llama-swap", "-config", "/app/conf/config.yaml", "-watch-config"]
+    ports:
+      # Ollama (11434) / auth-gate (4180) と衝突しないポートに置く
+      - "${LLAMA_SWAP_PORT:-11435}:8080"
+    volumes:
+      # config.yaml を編集すれば再起動なしで反映される(ディレクトリごとマウント)
+      - ./:/app/conf:ro
+      # -hf で取得した GGUF のキャッシュ(~/.cache/llama.cpp, ~/.cache/huggingface)
+      - llama-cache:/root/.cache
+    environment:
+      # gated リポジトリを使う場合のみ設定(.env に置く)
+      HF_TOKEN: ${HF_TOKEN:-}
+    healthcheck:
+      # curl の有無に依存しない TCP 疎通チェック
+      test:
+        - "CMD-SHELL"
+        - "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # Claude Code 向けの変換シム。
+  # Claude Code は messages 配列に role:"system" を注入するが、Qwen 系の Jinja
+  # テンプレートはこれを raise_exception で拒否するため llama-server が 500 を返す。
+  # 本シムがトップレベル system に畳み込んで解消する。SSE は逐次転送する
+  # (バッファすると thinking が長いときに接続が沈黙し、クライアントが再送する)。
+  #
+  # ホストで直接動かすと ufw の DEFAULT_INPUT_POLICY=DROP に阻まれて LAN から
+  # 届かない。Docker で公開すると llama-swap と同じく iptables の DOCKER チェーンに
+  # 入るため、ufw の設定変更なしで LAN に出せる。
+  # モデルごとに 1 本ずつ立てる。第4引数で model を固定するため、
+  # Claude Code がサブエージェントに使う claude-sonnet-5 / claude-opus-5 も
+  # そのポートのモデルに束ねられ、llama-swap の往復ロードが起きない。
+  ccshim-b:
+    image: python:3.13-alpine
+    container_name: ccshim-b
+    restart: unless-stopped
+    command:
+      ["python3", "/app/ccshim.py", "11436", "http://llama-swap:8080", "/log", "qwen36-35b-iq4xs"]
+    ports:
+      - "${CCSHIM_B_PORT:-11436}:11436"
+    volumes:
+      - ./:/app:ro
+      - ccshim-log:/log
+    depends_on:
+      - llama-swap
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "python3 -c \"import socket;s=socket.socket();s.settimeout(2);s.connect(('127.0.0.1',11436))\""
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  ccshim-c:
+    image: python:3.13-alpine
+    container_name: ccshim-c
+    restart: unless-stopped
+    command:
+      ["python3", "/app/ccshim.py", "11437", "http://llama-swap:8080", "/log-c", "qwen36-35b-iq3s"]
+    ports:
+      - "${CCSHIM_C_PORT:-11437}:11437"
+    volumes:
+      - ./:/app:ro
+      - ccshim-log-c:/log-c
+    depends_on:
+      - llama-swap
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "python3 -c \"import socket;s=socket.socket();s.settimeout(2);s.connect(('127.0.0.1',11437))\""
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  llama-cache:
+  ccshim-log:
+  ccshim-log-c:

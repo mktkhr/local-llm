@@ -1,0 +1,194 @@
+# llama-swap 設定。リクエストの model 名を見て llama-server を起動/差し替える。
+#
+# Ollama からの移行対応:
+#   num_ctx                   -> -c
+#   OLLAMA_FLASH_ATTENTION=1  -> --flash-attn on
+#   OLLAMA_KV_CACHE_TYPE=q8_0 -> -ctk q8_0 -ctv q8_0
+#   OLLAMA_NUM_PARALLEL=1     -> -np 1
+#   OLLAMA_KEEP_ALIVE=-1      -> ttl 未指定(明示アンロードまで常駐)
+#   OLLAMA_MAX_LOADED_MODELS=1-> llama-swap の既定挙動(1モデルずつ差し替え)
+#
+# tool use 関連の必須事項:
+#   --jinja       GGUF 内の元 Jinja テンプレートを使う。これがないと llama-server は
+#                 ヒューリスティックパーサに落ち、tool call のデリミタを認識しない。
+#   -ctk/-ctv     公式 docs/function-calling.md が「q4_0 等の強い KV 量子化は
+#                 tool calling 品質を有意に落とす」と明記。q8_0 までに留める。
+
+# 初回は -hf が HuggingFace から GGUF をダウンロードするため長めに取る
+healthCheckTimeout: 1800
+logLevel: info
+
+macros:
+  common: >-
+    --host 0.0.0.0 --port ${PORT}
+    --jinja
+    -ngl 99
+    --flash-attn on
+    -np 1
+    --metrics
+
+models:
+  # --- ベンチ計画 v2 の基準点(V-3)。Qwen3.5-9B Q8_0・完全 GPU 内 ---
+  # --cache-reuse 256 と -lv 5 は V-2(プレフィックスキャッシュのヒット率)
+  # を測るための設定。常用エントリとは分けてある。
+  qwen3.5-9b-q8:
+    name: Qwen3.5 9B (Q8_0) / bench baseline
+    description: ベンチ計画 v2 の V-3 基準点。cache-reuse 計測用に verbose
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.5-9B-GGUF:Q8_0
+      --ctx-size 131072
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+      -lv 5
+
+  # --- ベンチ計画 v2 の候補 B。ncmoe=10 は Step 1 の実測で確定(VRAM 15,329 MiB) ---
+  # --no-mmproj: このモデルは VL だが、コーディング用途では projector が不要で
+  #              放置すると mmproj-BF16.gguf を自動ロードして VRAM を余計に食う。
+  qwen36-35b-iq4xs:
+    name: Qwen3.6-35B-A3B (UD-IQ4_XS) / bench B
+    description: ベンチ計画 v2 の採用構成。ncmoe=10、128k、KV q8_0
+    # claude-opus-5 / claude-sonnet-5 の alias は張らない。
+    # 張ると、C で作業中に Explore 等のサブエージェントが B を要求し、
+    # llama-swap がモデルを往復ロードしてプレフィックスキャッシュが毎回飛ぶ。
+    # サブエージェントの名前解決は ccshim の model 固定側で行う。
+    aliases:
+      - local-coder
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.6-35B-A3B-GGUF:UD-IQ4_XS
+      --no-mmproj
+      --n-cpu-moe 10
+      --ctx-size 131072
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # 量子化間比較(A vs B vs C)用。計画 3.1 に従い greedy 固定で分散を消す。
+  qwen36-35b-iq4xs-greedy:
+    name: Qwen3.6-35B-A3B (UD-IQ4_XS) greedy / bench B
+    description: 量子化間比較用。--temp 0、n=1
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.6-35B-A3B-GGUF:UD-IQ4_XS
+      --no-mmproj
+      --n-cpu-moe 10
+      --ctx-size 131072
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+      --temp 0
+
+  # --- 候補 A。ncmoe=17 は Step 1 の実測で確定(VRAM 15,358 MiB、N=16 で 15,822 超過) ---
+  qwen36-35b-q4kxl:
+    name: Qwen3.6-35B-A3B (UD-Q4_K_XL) / bench A
+    description: 構成α の品質天井狙い。ncmoe=17、128k、KV q8_0
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL
+      --no-mmproj
+      --n-cpu-moe 17
+      --ctx-size 131072
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # --- 候補 C。ncmoe=0 = 完全 GPU 内(Step 1 実測 15,032 MiB) ---
+  qwen36-35b-iq3s:
+    name: Qwen3.6-35B-A3B (UD-IQ3_S) / bench C
+    description: 構成α の速度優先。オフロードなし、128k、KV q8_0
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.6-35B-A3B-GGUF:UD-IQ3_S
+      --no-mmproj
+      --ctx-size 131072
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # 量子化間比較(A vs B vs C)用の greedy 版。計画 3.1 に従い --temp 0 / n=1。
+  qwen36-35b-iq3s-greedy:
+    name: Qwen3.6-35B-A3B (UD-IQ3_S) greedy / bench C
+    description: 量子化間比較用。オフロードなし、--temp 0
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.6-35B-A3B-GGUF:UD-IQ3_S
+      --no-mmproj
+      --ctx-size 131072
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+      --temp 0
+
+  qwen36-35b-q4kxl-greedy:
+    name: Qwen3.6-35B-A3B (UD-Q4_K_XL) greedy / bench A
+    description: 量子化間比較用。ncmoe=17、--temp 0
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL
+      --no-mmproj
+      --n-cpu-moe 17
+      --ctx-size 131072
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+      --temp 0
+
+  gpt-oss-20b:
+    name: gpt-oss 20B (MXFP4)
+    description: harmony ネイティブパーサあり。tool use 検証の主対象
+    # Ollama 側の設定を引き継いだクライアントからも引けるようにする
+    aliases:
+      - gpt-oss:20b
+      - gpt-oss
+    cmd: |
+      llama-server ${common}
+      -hf ggml-org/gpt-oss-20b-GGUF:MXFP4
+      -c 32768
+      -ub 2048 -b 2048
+    # gpt-oss は attention sink を使うため KV 量子化は指定せず f16 のまま。
+    # 重み ~11.5 GB + KV f16 @32k で 16 GB に収まる。ctx を伸ばす場合は
+    # nvidia-smi で 100% GPU を維持できているか確認してから。
+
+  qwen3.5-9b:
+    name: Qwen3.5 9B (Q4_K_M)
+    description: Hermes 形式ネイティブパーサあり。Ollama で tool call 不発の報告が多い系列の比較用
+    aliases:
+      - qwen3.5:9b
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.5-9B-GGUF:Q4_K_M
+      -c 65536
+      -ctk q8_0 -ctv q8_0
+
+  gemma4-12b:
+    name: Gemma 4 12B (QAT q4_0)
+    description: tool-call ネイティブハンドラがなく Generic フォールバックになる系列
+    aliases:
+      - gemma4:12b-it-qat
+      - gemma4:12b
+    cmd: |
+      llama-server ${common}
+      -hf google/gemma-4-12B-it-qat-q4_0-gguf
+      --hf-file gemma-4-12b-it-qat-q4_0.gguf
+      -c 65536
+      -ctk q8_0 -ctv q8_0
+
+  qwen3.5-4b:
+    name: Qwen3.5 4B (Q4_K_M)
+    description: 軽量枠。応答速度優先の用途
+    aliases:
+      - qwen3.5:4b
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.5-4B-GGUF:Q4_K_M
+      -c 65536
+      -ctk q8_0 -ctv q8_0

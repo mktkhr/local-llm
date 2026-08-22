@@ -1,5 +1,8 @@
 # 認証ゲートの実トークン
 deploy/auth-gate/.env
 
+# llama-swap のローカル設定(HF_TOKEN / ポート)
+deploy/llama/.env
+
 # prettier 中間生成物
 .ai-out/

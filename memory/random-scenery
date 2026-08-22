@@ -1,0 +1,25 @@
+name: random-scenery
+description: 風景画像生成スクリプトの概要
+metadata:
+  type: project
+---
+
+# 風景画像生成スクリプト
+
+**場所**: `examples/generate_scenery.py`
+
+**機能**:
+- ランダムな風景プロンプト（山岳、自然、都市、季節別など 50+）
+- 複数のアートスタイル適用（リアリズム、アニメ、水彩画等）
+- DALL-E 3 または Stable Diffusion に対応
+
+**使用方法**:
+```bash
+python examples/generate_scenery.py
+```
+
+**実装オプション**:
+- DALL-E 3 API: OpenAI クライアントを使用
+- Stable Diffusion: Diffusers ライブラリを使用
+
+[[kitty_kaeru.txt]]

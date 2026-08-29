@@ -1,0 +1,57 @@
+services:
+  # Prefill 側の llama-server。
+  #
+  # 既存の llama-swap (:11435) とは独立させる。llama-swap のような router 構成では
+  # slot save/restore が使えないため(llama.cpp Issue #18703)、素の llama-server を
+  # 別ポートで立てる。
+  #
+  # Docker の publish は iptables の DOCKER チェーンに入るため、
+  # ufw (DEFAULT_INPUT_POLICY=DROP) の設定を変更せずに LAN へ出せる。
+  llama-pd:
+    build:
+      context: .
+      args:
+        LLAMA_TAG: ${LLAMA_TAG:-b10679}
+        CUDA_ARCH: ${CUDA_ARCH:-89}
+        CUDA_VERSION: ${CUDA_VERSION:-12.8.1}
+    image: llama-pd:${LLAMA_TAG:-b10679}
+    container_name: llama-pd
+    restart: unless-stopped
+    gpus: all
+    ports:
+      - "${PD_SERVER_PORT:-18080}:18080"
+    volumes:
+      - ${MODEL_DIR:?MODEL_DIR を .env に設定してください}:/models:ro
+      - ./kv:/kv
+    # Decode 側(M1)と全フラグを一致させる。
+    # 特に -fa on は必須。既定の auto はバックエンドごとに解決されるため、
+    # CUDA と Metal で v_trans が食い違い restore が失敗する。
+    command: >
+      -m /models/${MODEL_FILE:-Qwen3-4B-Instruct-2507-Q4_K_M.gguf}
+      --host 0.0.0.0 --port 18080
+      -c ${PD_N_CTX:-16384} -np 1 -ngl 99 -fa on
+      --cache-type-k ${PD_KV_TYPE:-q8_0} --cache-type-v ${PD_KV_TYPE:-q8_0}
+      --slots --slot-save-path /kv/
+      --no-context-shift --no-warmup -lv 5
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/18080'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+
+  # 保存された KV ファイルを Decode 側へ配信する。
+  # 転送時間を Decode 側から計測するため、HTTP で取りに行かせる。
+  #
+  # nginx を使うのは Range リクエストに対応させるため。Wi-Fi のように
+  # 遅延と再送があるリンクでは単一 TCP フローが輻輳ウィンドウで頭打ちになり、
+  # リンク容量の半分以下しか出ない。Range で分割して並列に取得すると回復する。
+  # Python の http.server は Range 非対応のため使えない。
+  kv-http:
+    image: nginx:alpine
+    container_name: kv-http
+    restart: unless-stopped
+    ports:
+      - "${PD_KV_PORT:-18081}:80"
+    volumes:
+      - ./kv:/usr/share/nginx/html:ro

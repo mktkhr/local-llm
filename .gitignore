@@ -6,3 +6,12 @@ deploy/llama/.env
 
 # prettier 中間生成物
 .ai-out/
+
+# PD分離 PoC のローカル設定と KV キャッシュ実体
+deploy/pd/.env
+deploy/pd/kv/*
+!deploy/pd/kv/.gitkeep
+
+# Python バイトコード
+__pycache__/
+*.pyc

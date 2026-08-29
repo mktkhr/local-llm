@@ -42,7 +42,7 @@ def main():
     rows = []
     for r in baseline:
         rows.append({
-            "config": r["label"], "prompt_tokens": r["prompt_tokens"],
+            "model": r.get("model", "?"), "config": r["label"], "prompt_tokens": r["prompt_tokens"],
             "prefill_ms": round(r["prefill_ms"], 1),
             "prefill_tok_per_s": round(r["prefill_tok_per_s"], 1),
             "kv_save_ms": "", "kv_mib": "", "transfer_ms": "", "transfer_mib_per_s": "",
@@ -54,7 +54,7 @@ def main():
         })
     for r in pd_runs:
         rows.append({
-            "config": r["label"], "prompt_tokens": r["prompt_tokens"],
+            "model": r.get("model", "?"), "config": r["label"], "prompt_tokens": r["prompt_tokens"],
             "prefill_ms": round(r["prefill"]["prompt_ms"], 1),
             "prefill_tok_per_s": round(r["prefill"]["prompt_tok_per_s"], 1),
             "kv_save_ms": round(r["save"]["save_ms"], 1),
@@ -77,22 +77,24 @@ def main():
         w.writerows(rows)
 
     # --- breakeven.csv ---
-    a = {r["prompt_tokens"]: r for r in baseline if r["label"].startswith("A-")}
+    # 単体構成 A の基準値。モデルが異なれば別物なので (model, tokens) で引く。
+    a = {(r.get("model", "?"), r["prompt_tokens"]): r
+         for r in baseline if r["label"].startswith("A-")}
 
     # PD分離の構成ごとに損益分岐を出す。転送方式(単一接続 / 並列)の違いを
-    # そのまま比較できるようにするため、ラベルを行に残す。
+    # そのまま比較できるようにするため、ラベルとモデルを行に残す。
     pd_configs = {}
     for r in pd_runs:
         if r["label"].startswith("C"):
-            pd_configs.setdefault(r["label"], {})[r["prompt_tokens"]] = r
+            pd_configs.setdefault((r.get("model", "?"), r["label"]), {})[r["prompt_tokens"]] = r
 
     be_rows = []
-    for label, pd_by_tok in pd_configs.items():
+    for (model, label), pd_by_tok in pd_configs.items():
       for tok in sorted(pd_by_tok):
-        if tok not in a:
+        if (model, tok) not in a:
             continue
         p = pd_by_tok[tok]
-        m1_prefill = a[tok]["prefill_ms"]
+        m1_prefill = a[(model, tok)]["prefill_ms"]
         kv_mib = p["save"]["mib"]
         fixed = p["prefill"]["prompt_ms"] + p["save"]["save_ms"] + p["restore"]["restore_ms"] + p["decode"]["prompt_ms"]
 
@@ -100,6 +102,7 @@ def main():
             xfer = p["transfer"]["ms"] if mibps is None else kv_mib / mibps * 1000.0
             total = fixed + xfer
             be_rows.append({
+                "model": model,
                 "config": label,
                 "prompt_tokens": tok,
                 "network": net,
@@ -111,7 +114,7 @@ def main():
                 "speedup_x": round(m1_prefill / total, 2),
                 "pd_wins": m1_prefill > total,
             })
-    be_rows.sort(key=lambda r: (r["config"], r["prompt_tokens"], r["network"]))
+    be_rows.sort(key=lambda r: (r["model"], r["config"], r["prompt_tokens"], r["network"]))
 
     with open(RESULTS / "breakeven.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(be_rows[0].keys()))

@@ -19,6 +19,8 @@ def main():
     ap.add_argument("--tokens", type=int, nargs="+", required=True)
     ap.add_argument("--n-predict", type=int, default=32)
     ap.add_argument("--label", required=True)
+    ap.add_argument("--model", required=True,
+                    help="モデルの識別子。集計時に構成同士を突き合わせる鍵になる")
     ap.add_argument("--out", help="JSON Lines の追記先")
     args = ap.parse_args()
 
@@ -38,6 +40,7 @@ def main():
 
         row = {
             "label": args.label,
+            "model": args.model,
             "target_tokens": target,
             "prompt_tokens": ntok,
             "prompt_n": t["prompt_n"],

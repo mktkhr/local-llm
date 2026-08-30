@@ -66,6 +66,21 @@ GPU・モデルが変わっても比較できるよう、以下は **常に固�
 | [docs/05-auth-gate.md](docs/05-auth-gate.md)   | Caddy + 静的Bearer による外部公開用の認証ゲート(Linux 専用)                            |
 | [docs/06-evaluation.md](docs/06-evaluation.md) | コーディング/要約/長コンテキストの3用途で品質まで含めて評価するための方法論(汎用)      |
 
+### PD分離(Prefill/Decode 分離)
+
+NVIDIA GPU 機で Prefill した KV キャッシュを転送し、Apple Silicon 機で Decode を継続する構成の検証記録。
+
+| ファイル | 内容 |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [docs/pd/01-research.md](docs/pd/01-research.md)             | llama.cpp における実現方式の調査。ファイル形式・一致要件・既知の問題      |
+| [docs/pd/02-poc-phase1.md](docs/pd/02-poc-phase1.md)         | 同一マシンでの slot save/restore 検証                                     |
+| [docs/pd/03-phase2-procedure.md](docs/pd/03-phase2-procedure.md) | Prefill 側(CUDA)のセットアップ手順とビルドの詰まりどころ              |
+| [docs/pd/04-results.md](docs/pd/04-results.md)               | クロスバックエンド検証と計測結果。転送方式による差                        |
+| [docs/pd/05-model-scaling.md](docs/pd/05-model-scaling.md)   | モデルサイズと損益分岐の関係(4B / 8B / 14B)                              |
+| [docs/pd/06-kv-quantization.md](docs/pd/06-kv-quantization.md) | KV 量子化による転送量削減                                               |
+| [docs/pd/07-kv-quality.md](docs/pd/07-kv-quality.md)         | KV 量子化が長文の情報抽出能力に与える影響                                 |
+| [**docs/pd/08-reproduction.md**](docs/pd/08-reproduction.md) | **再現手順書。別マシンで最初から計測を再現する場合はここから**            |
+
 ### Linux + NVIDIA GPU + Ollama
 
 | ファイル                                           | 内容                                                                        |

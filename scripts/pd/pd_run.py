@@ -160,6 +160,8 @@ def main():
     ap.add_argument("--label", default="")
     ap.add_argument("--model", required=True,
                     help="モデルの識別子。集計時に構成同士を突き合わせる鍵になる")
+    ap.add_argument("--kv-type", default="q8_0",
+                    help="KV キャッシュの量子化型。転送量が変わるため突き合わせ鍵に含める")
     ap.add_argument("--out", help="JSON Lines の追記先")
     args = ap.parse_args()
 
@@ -174,7 +176,7 @@ def main():
     # 作ったファイルを上書きできず Permission denied になる。
     tag = re.sub(r"[^A-Za-z0-9]+", "-", args.label).strip("-") or "run"
     filename = f"pd_{tag}_{args.tokens}.bin"
-    out = {"label": args.label, "model": args.model, "target_tokens": args.tokens, "n_predict": args.n_predict}
+    out = {"label": args.label, "model": args.model, "kv_type": args.kv_type, "target_tokens": args.tokens, "n_predict": args.n_predict}
 
     # プロンプトは Decode 側で生成する。両機のトークナイザが一致していることは
     # 同一 GGUF (sha256 一致) が前提。

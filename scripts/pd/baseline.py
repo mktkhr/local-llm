@@ -21,6 +21,8 @@ def main():
     ap.add_argument("--label", required=True)
     ap.add_argument("--model", required=True,
                     help="モデルの識別子。集計時に構成同士を突き合わせる鍵になる")
+    ap.add_argument("--kv-type", default="q8_0",
+                    help="KV キャッシュの量子化型。転送量が変わるため突き合わせ鍵に含める")
     ap.add_argument("--out", help="JSON Lines の追記先")
     args = ap.parse_args()
 
@@ -41,6 +43,7 @@ def main():
         row = {
             "label": args.label,
             "model": args.model,
+            "kv_type": args.kv_type,
             "target_tokens": target,
             "prompt_tokens": ntok,
             "prompt_n": t["prompt_n"],
@@ -57,10 +60,11 @@ def main():
         rows.append(row)
         print(json.dumps(row, ensure_ascii=False), flush=True)
 
-    if args.out:
-        with open(args.out, "a") as f:
-            for r in rows:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        # 掃引の途中で中断しても結果を失わないよう、1 件ごとに追記する。
+        # 16k の Prefill は M1 で数分かかるため、まとめ書きは危険。
+        if args.out:
+            with open(args.out, "a") as f:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
     return 0
 
 

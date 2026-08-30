@@ -72,6 +72,7 @@ NVIDIA GPU 機で Prefill した KV キャッシュを転送し、Apple Silicon 
 
 | ファイル | 内容 |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [**docs/pd/00-summary.md**](docs/pd/00-summary.md)           | **結論だけ 1 枚。まずここを読む**                                          |
 | [docs/pd/01-research.md](docs/pd/01-research.md)             | llama.cpp における実現方式の調査。ファイル形式・一致要件・既知の問題      |
 | [docs/pd/02-poc-phase1.md](docs/pd/02-poc-phase1.md)         | 同一マシンでの slot save/restore 検証                                     |
 | [docs/pd/03-phase2-procedure.md](docs/pd/03-phase2-procedure.md) | Prefill 側(CUDA)のセットアップ手順とビルドの詰まりどころ              |

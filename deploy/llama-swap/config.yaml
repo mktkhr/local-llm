@@ -161,6 +161,59 @@ models:
       --cache-reuse 256
       --temp 0
 
+  # --- Qwen3.8-27B (dense)。nlops の構造化出力の比較用に追加 ---
+  #
+  # 既存の Qwen3.6-35B-A3B は MoE なので --n-cpu-moe でエキスパートだけ CPU へ
+  # 逃がせたが、**こちらは dense なので CPU へ出した層はそのまま遅くなる。**
+  # RTX 4080 SUPER (16 GB) では KV ごと収まるのは IQ3_S (12.0 GB) だけ。
+  #
+  # 文脈長は 32k。nlops の実プロンプトは平均 6.5k トークンで、
+  # 131k を確保すると KV が VRAM を食って層を CPU へ追い出すことになる。
+  qwen38-27b-iq3s:
+    name: Qwen3.8 27B (UD-IQ3_S)
+    description: 12.0 GB。16 GB VRAM に KV ごと収まる。nlops 比較用
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S
+      --no-mmproj
+      --ctx-size 32768
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # 量子化比較。IQ3_S の実測が 12,648 MiB (重み 11,484 + KV/その他 1,164) なので、
+  # IQ4_XS (13,640 MiB) は約 14,800 MiB で収まる見込み。全層 GPU のまま試す。
+  qwen38-27b-iq4xs:
+    name: Qwen3.8 27B (UD-IQ4_XS)
+    description: 14.3 GB。全層 GPU に載る限界。IQ3_S との品質差を見る
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.8-27B-GGUF:UD-IQ4_XS
+      --no-mmproj
+      --ctx-size 32768
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # Q4_K_XL は 16,785 MiB で 16 GB に収まらない。全 64 層のうち 12 層を CPU へ。
+  # **dense なので CPU へ出した層はそのまま遅くなる** (MoE の --n-cpu-moe とは違う)。
+  # 品質のために速度をどれだけ払うかを測るためのエントリ。
+  qwen38-27b-q4kxl:
+    name: Qwen3.8 27B (UD-Q4_K_XL)
+    description: 17.6 GB。52/64 層のみ GPU。品質と速度の交換を測る
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL
+      --no-mmproj
+      -ngl 52
+      --ctx-size 32768
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
   gpt-oss-20b:
     name: gpt-oss 20B (MXFP4)
     description: harmony ネイティブパーサあり。tool use 検証の主対象

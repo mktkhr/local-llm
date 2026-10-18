@@ -41,7 +41,6 @@ models:
       --kv-unified
       -ctk q8_0 -ctv q8_0
       -b 2048 -ub 512
-      --cache-reuse 256
       -lv 5
 
   # --- ベンチ計画 v2 の候補 B。ncmoe=10 は Step 1 の実測で確定(VRAM 15,329 MiB) ---
@@ -214,6 +213,142 @@ models:
       -b 2048 -ub 512
       --cache-reuse 256
 
+  # --- 12B クラスの比較 (nlops 用)。9B 前後なので Q8_0 でも 16 GB に収まる。
+  #     量子化による劣化を気にせずモデル同士を比べられる。 ---
+
+  # Qwen3.5 と Gemma4 に継続事前学習と RL 自己改善を重ねた系列。
+  # モデルカードが Qwen3.6-35B-A3B / Gemma-4-31B と比較しているので、
+  # 9B で 31B 級に届くかを実測する。
+  ornith15-9b-q8:
+    name: Ornith-1.5-9B (Q8_0)
+    description: 9.8 GB。9B dense。31B 級と比較を謳う
+    cmd: |
+      llama-server ${common}
+      -hf ornith-ai/Ornith-1.5-9B-GGUF:Q8_0
+      --ctx-size 32768
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # IBM。tool calling の強化を明記し、業務アプリと LLM エージェントを
+  # 想定用途に挙げている。この PoC の用途そのもの。
+  granite41-8b-q8:
+    name: Granite-4.1-8B (Q8_0)
+    description: 9.3 GB。tool calling 重視。Apache 2.0
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/granite-4.1-8b-GGUF:Q8_0
+      --ctx-size 32768
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # MoE だが活性は 1B のみ。精度は落ちるはずだが、
+  # gemma4-12b の 4.3 秒がどこまで縮むかという別軸を測る。
+  lfm25-8b-a1b-q8:
+    name: LFM2.5-8B-A1B (Q8_0)
+    description: 9.0 GB。活性 1B の MoE。速度の下限を見る
+    cmd: |
+      llama-server ${common}
+      -hf LiquidAI/LFM2.5-8B-A1B-GGUF:Q8_0
+      --ctx-size 32768
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # --- 量子化そのものを変数として切り分けるための 3 点セット ---
+  #
+  # これまで測ってきたモデルは全て量子化済みで、量子化が精度に効いているかを
+  # 分離できていなかった。16 GB では **BF16 が全層 GPU に載るのは 4B クラスだけ**
+  # (9B は BF16 で 17.9〜18.4 GB あり 1.9〜2.4 GB 足りない)。
+  # 層を CPU へ出すと速度差が交絡するので、交絡なしで測れるのはこの規模になる。
+  #
+  # 同一モデル・同一設定で重みの精度だけを変える。
+  qwen35-4b-bf16:
+    name: Qwen3.5-4B (BF16)
+    description: 8.4 GB。量子化なし。量子化比較の基準点
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.5-4B-GGUF:BF16
+      --no-mmproj
+      --ctx-size 32768
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  qwen35-4b-q8:
+    name: Qwen3.5-4B (Q8_0)
+    description: 4.5 GB。BF16 との差が量子化の効き
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.5-4B-GGUF:Q8_0
+      --no-mmproj
+      --ctx-size 32768
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # 既定モデル (gemma4-12b) は QAT q4_0、すなわち 4 bit である。
+  # 量子化が handicap になっていないかを確かめるための Q8_0。
+  # BF16 は 23.8 GB で 16 GB に載らないので、全層 GPU で比べられる上限がここ。
+  gemma4-12b-q8:
+    name: Gemma 4 12B (Q8_0)
+    description: 12.7 GB。既定の QAT q4_0 との量子化比較用
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/gemma-4-12b-it-GGUF:Q8_0
+      --no-mmproj
+      --ctx-size 32768
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # 現行の既定 (gemma4-12b, 12B dense) と同系列・同じ QAT q4_0 のまま、
+  # 総容量を 26B へ上げ、活性を 4B へ下げた MoE。14.4 GB で 16 GB に収まる。
+  # 量子化を固定してモデル容量だけを変えられる、貴重な比較対象。
+  #
+  # 余裕が 1.3 GB しかないので文脈は 16k に抑える。
+  # nlops の実プロンプトは平均 6.5k トークンなので足りる。
+  gemma4-26b-a4b-qat:
+    name: Gemma 4 26B-A4B (QAT q4_0)
+    description: 14.4 GB。活性 4B の MoE。既定と同系列・同量子化で容量だけ 2 倍
+    cmd: |
+      llama-server ${common}
+      -hf google/gemma-4-26B-A4B-it-qat-q4_0-gguf
+      --no-mmproj
+      --ctx-size 16384
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # 504 Tool のカタログは **Tool の説明だけで 24,540〜54,506 トークン**になる。
+  # 16k では Tool 結果が 1 件も入る前に溢れる (実測: 400 exceeds context size)。
+  #
+  # MoE なのでエキスパートだけ CPU へ逃がせる。dense と違い活性は 4B のままなので
+  # 逃がした層の影響は小さい……はずで、そこを実測する。
+  # a4b の唯一の利点は速度 (12B より 23〜27% 速い) なので、
+  # **オフロードで速度が消えるなら採用する理由が無くなる。**
+  gemma4-26b-a4b-64k:
+    name: Gemma 4 26B-A4B (QAT q4_0) 64k
+    description: 504 Tool 用。エキスパートを CPU へ逃がして文脈を確保
+    cmd: |
+      llama-server ${common}
+      -hf google/gemma-4-26B-A4B-it-qat-q4_0-gguf
+      --no-mmproj
+      --n-cpu-moe 12
+      --ctx-size 65536
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
   gpt-oss-20b:
     name: gpt-oss 20B (MXFP4)
     description: harmony ネイティブパーサあり。tool use 検証の主対象
@@ -264,3 +399,195 @@ models:
       -hf unsloth/Qwen3.5-4B-GGUF:Q4_K_M
       -c 65536
       -ctk q8_0 -ctv q8_0
+
+  # --- app-orchestra のモデル比較用。同じ eval コーパス (18 ケース 200 runs) を
+  #     同じ commit・同じツール一覧に対して回し、モデルだけを変数にする。
+  #     量子化を比較に持ち込まないよう、どちらも Q8_0 で揃える。 ---
+
+  # hybrid attention。配布元が llama.cpp 側に Spark 2.5 ランタイム対応を
+  # 求めているので、起動すること自体が最初の確認事項。
+  spark-x25-4b-q8:
+    name: Spark-X2.5-4B (Q8_0)
+    description: 4.7 GB。4B dense。hybrid attention、tool use とエージェント用途を謳う
+    cmd: |
+      llama-server ${common}
+      -hf XHToken/Spark-X2.5-4B-GGUF:Q8_0
+      --ctx-size 32768
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # OpenBMB。標準 LlamaForCausalLM なのでカスタムカーネル不要。
+  # tool use とエージェント系のスコアを売りにしている 2B。
+  minicpm5-2b-q8:
+    name: MiniCPM5-2B (Q8_0)
+    description: 2.4 GB。2B dense。tool use 重視、標準アーキテクチャ
+    cmd: |
+      llama-server ${common}
+      -hf openbmb/MiniCPM5-2B-GGUF:Q8_0
+      --ctx-size 32768
+      --kv-unified
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --cache-reuse 256
+
+  # ---------------------------------------------------------------- 埋め込み
+  # app-orchestra の docs/specs/embedding.md 用。チャットではなく
+  # /v1/embeddings だけを提供する。common マクロは使わない: --jinja も
+  # --flash-attn も埋め込みには要らず、代わりに --embedding と、モデルごとに
+  # 異なるプーリング方式の指定が要る。
+  qwen3-embedding-0.6b-q8:
+    name: Qwen3-Embedding-0.6B (Q8_0)
+    description: 0.6 GB。埋め込み専用。last-token プーリング。クエリ側に Instruct プレフィクスを付ける契約
+    cmd: |
+      llama-server
+      --host 0.0.0.0 --port ${PORT}
+      -ngl 99
+      --embedding
+      --pooling last
+      -hf Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0
+      --ctx-size 8192
+      -b 8192 -ub 2048
+
+  bge-m3-q8:
+    name: BGE-M3 (Q8_0)
+    description: 0.6 GB。埋め込み専用。CLS プーリング。プレフィクス不要
+    cmd: |
+      llama-server
+      --host 0.0.0.0 --port ${PORT}
+      -ngl 99
+      --embedding
+      --pooling cls
+      -hf gpustack/bge-m3-GGUF:Q8_0
+      --ctx-size 8192
+      -b 8192 -ub 2048
+
+  # 日本語特化。ModernBERT-Ja ベース。JMTEB 上位。
+  # クエリ側に「検索クエリ: 」、文書側に「検索文書: 」を付ける契約。
+  ruri-v3-310m-q8:
+    name: Ruri v3 310m (Q8_0)
+    description: 0.35 GB。埋め込み専用。日本語特化。検索クエリ/検索文書 プレフィクス
+    cmd: |
+      llama-server
+      --host 0.0.0.0 --port ${PORT}
+      -ngl 99
+      --embedding
+      --pooling cls
+      -hf Targoyle/ruri-v3-310m-GGUF:Q8_0
+      --ctx-size 8192
+      -b 8192 -ub 2048
+
+  # 多言語。query:/passage: プレフィクスを付ける契約。平均プーリング。
+  e5-large-q8:
+    name: multilingual-e5-large (Q8_0)
+    description: "0.6 GB。埋め込み専用。多言語。query:/passage: プレフィクス、mean プーリング"
+    cmd: |
+      llama-server
+      --host 0.0.0.0 --port ${PORT}
+      -ngl 99
+      --embedding
+      --pooling mean
+      -hf chris-code/multilingual-e5-large-Q8_0-GGUF:Q8_0
+      --ctx-size 512
+      -b 512 -ub 512
+
+  # 同じ Ruri v3 を mean プーリングで。cls との比較用。
+  ruri-v3-310m-q8-mean:
+    name: Ruri v3 310m (Q8_0, mean pooling)
+    description: プーリング方式の比較用。ruri-v3-310m-q8 と同一モデル
+    cmd: |
+      llama-server
+      --host 0.0.0.0 --port ${PORT}
+      -ngl 99
+      --embedding
+      --pooling mean
+      -hf Targoyle/ruri-v3-310m-GGUF:Q8_0
+      --ctx-size 8192
+      -b 8192 -ub 2048
+
+  # リランカー。埋め込みと違い、質問と候補を1組ずつ突き合わせて採点する。
+  # docs/specs/retrieving.md V6: 広く引いてから並べ直す段の担当。
+  bge-reranker-v2-m3-q8:
+    name: BGE reranker v2 m3 (Q8_0)
+    description: 0.6 GB。リランカー専用。/v1/rerank で使う
+    cmd: |
+      llama-server
+      --host 0.0.0.0 --port ${PORT}
+      -ngl 99
+      --reranking
+      -hf gpustack/bge-reranker-v2-m3-GGUF:Q8_0
+      --ctx-size 8192
+      -b 8192 -ub 2048
+
+  # 日本語特化リランカー。cl-nagoya/ruri-v3-reranker-310m を mainline llama.cpp
+  # 付属の converter (ModernBertModel.set_vocab の SentencePiece/Unigram 分岐、
+  # app-orchestra 側でローカルパッチ・未マージ) で GGUF 化したもの。
+  # モデルカードの CrossEncoder.predict/rank の例はプレフィクスなしの生テキストを
+  # そのまま渡している(埋め込み側の ruri-v3-310m-q8 と違い「検索クエリ:」等は不要)。
+  # 量子化はまだせず f16 のまま(310m なので 0.63GB で問題ない)。
+  ruri-v3-reranker-310m-f16:
+    name: Ruri v3 Reranker 310m (F16)
+    description: 0.63 GB。日本語特化リランカー。/v1/rerank で使う。プレフィクス不要
+    cmd: |
+      llama-server
+      --host 0.0.0.0 --port ${PORT}
+      -ngl 99
+      --reranking
+      -m /root/.cache/huggingface/ruri-v3-reranker-310m-f16.gguf
+      --ctx-size 8192
+      -b 8192 -ub 2048
+
+  # 同じ BGE リランカーの一世代前。v2-m3 との比較用。標準の llama.cpp で
+  # 動くリランカーの GGUF は 2026-09-19 時点でこの2本しかない
+  # (gte-multilingual と jina-v2 は llama-box フォーク、mxbai-rerank-v2 は
+  # スコアが壊れる既知の不具合 ggml-org/llama.cpp#16407、
+  # bge-reranker-v2-gemma はロードできない #13041)。
+  bge-reranker-large-q8:
+    name: BGE reranker large (Q8_0)
+    description: 0.6 GB。リランカー専用。v2-m3 の前世代、比較用
+    cmd: |
+      llama-server
+      --host 0.0.0.0 --port ${PORT}
+      -ngl 99
+      --reranking
+      -hf kongfly/bge-reranker-large-Q8_0-GGUF:Q8_0
+      --ctx-size 512
+      -b 512 -ub 512
+
+# ---------------------------------------------------------------- グループ
+# app-orchestra の絞り込み (docs/specs/shortlisting.md H4) は、埋め込み・
+# リランカー・チャットの3モデルを同時に必要とする。既定の1モデルずつ差し替え
+# だと1リクエストに最大3回の載せ替え (温まっていて計7〜8秒、冷えて40秒) が
+# 乗る (app-orchestra DECISIONS.md 2026-09-15)。このグループは3本を常駐させ、
+# 他のモデルを呼んでも降ろさない。
+  # --- Ternary Bonsai 2 27B (PrismML, 2026-09-17公開) ---
+  # Qwen3.8-27B を三値(-1/0/+1)量子化したもの。実効 1.75 bits/weight、5.95GB。
+  # 標準の llama-server では読めない(独自 ggml type 142/143 → "invalid ggml type"
+  # でロード失敗。2026-09-18 に実測)。PrismML のフォークの llama-server を使う。
+  # バイナリは prism/ に置いてある(github.com/PrismML-Eng/llama.cpp の
+  # prism-b10685-7dffb15, linux-cuda-12.8-x64)。LD_LIBRARY_PATH が要る。
+  # モデル本体は他のエントリと同じ HuggingFace キャッシュにダウンロード済み。
+  # 思考は既定で有効。切るときはリクエスト側で
+  # chat_template_kwargs.enable_thinking=false を送る(qwen3.5 と同じ)。
+  bonsai2-27b:
+    name: Ternary Bonsai 2 27B (PTQ1_0) / PrismML fork
+    description: 三値量子化 27B。VRAM 実測 7.3GB。tool call 動作確認済み
+    env:
+      - LD_LIBRARY_PATH=/app/conf/prism
+    cmd: |
+      /app/conf/prism/llama-server ${common}
+      -m /root/.cache/huggingface/hub/models--prism-ml--Ternary-Bonsai-2-27B-gguf/snapshots/6ed5e12bf84b7a63069882c91dd9e9218647d17b/Ternary-Bonsai-2-27B-PTQ1_0.gguf
+      --ctx-size 32768
+      -ctk q8_0 -ctv q8_0
+      --no-mmproj
+
+groups:
+  narrowing:
+    swap: false
+    exclusive: false
+    persistent: true
+    members:
+      - qwen3.5-9b-q8
+      - ruri-v3-310m-q8-mean
+      - bge-reranker-v2-m3-q8

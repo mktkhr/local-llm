@@ -23,6 +23,9 @@ set -euo pipefail
 TASK="${1:?M1 または M2}"; LABEL="${2:?ラベル(例 C-mtp2-run1)}"
 HERE="$(cd "$(dirname "$0")" && pwd)"; ROOT="$(cd "$HERE/.." && pwd)"; cd "$ROOT"
 export PATH="$HOME/.local/bin:$HOME/.asdf/shims:$PATH"
+# asdf の shim は .tool-versions が無いディレクトリ(作業用 worktree)で "No version is set for command go" になり
+# 判定が全滅する。インストール済みの最新版を明示する(環境変数 GO_VERSION で上書き可)
+export ASDF_GOLANG_VERSION="${GO_VERSION:-$(asdf list golang 2>/dev/null | tr -d ' *' | tail -1)}"
 
 RAG_REPO="${RAG_REPO:-$HOME/ghq/github.com/mktkhr/rag}"
 RAG_REV="${RAG_REV:-c2181d0}"

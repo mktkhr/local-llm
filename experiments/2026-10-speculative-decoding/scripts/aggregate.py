@@ -128,7 +128,8 @@ def load_rows(raw_dir: pathlib.Path, files: list[pathlib.Path] | None = None) ->
 
 
 CC_COLUMNS = ["task", "label", "pass", "wall_s", "exit_code", "num_turns", "changed_files", "requests",
-              "tool_use_total", "json_broken", "raw_token_leak", "cache_n_mean", "acceptance", "draft_n", "predicted_n"]
+              "tool_use_total", "json_broken", "raw_token_leak", "cache_n_mean", "prompt_n", "cached_n", "cache_hit",
+              "acceptance", "draft_n", "predicted_n"]
 
 
 def summarize_cc(summaries: list[dict]) -> list[dict]:
@@ -145,6 +146,12 @@ def summarize_cc(summaries: list[dict]) -> list[dict]:
             "changed_files": sm.get("changed_files"), "requests": sess.get("requests"),
             "tool_use_total": sess.get("tool_use_total"), "json_broken": sess.get("json_broken"),
             "raw_token_leak": sess.get("raw_token_leak"), "cache_n_mean": _mean(cache),
+            # セッション合計の prefix cache ヒット(/metrics の prompt_tokens_cached_total / prompt_tokens_total 差分)。
+            # /v1/messages の応答には timings が無く、ターン別の cache_n は取れないため合計で見る
+            "prompt_n": met.get("prompt_n"), "cached_n": met.get("cached_n"),
+            "cache_hit": (round(met["cached_n"] / (met["cached_n"] + met["prompt_n"]), 3)
+                          if met.get("cached_n") is not None and met.get("prompt_n") is not None
+                          and (met["cached_n"] + met["prompt_n"]) > 0 else ""),
             "acceptance": met.get("acceptance"), "draft_n": met.get("draft_n"), "predicted_n": met.get("predicted_n"),
         })
     return sorted(out, key=lambda r: (str(r["task"]), str(r["label"])))

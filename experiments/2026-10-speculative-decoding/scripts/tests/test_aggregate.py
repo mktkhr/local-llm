@@ -53,8 +53,12 @@ class Summarize(unittest.TestCase):
         sums = [{"task": "M1", "label": "C-mtp2-run1", "pass": True, "wall_s": 84, "exit_code": 0, "num_turns": 30,
                  "changed_files": 3, "cc_metrics": {"session": {"requests": 31, "tool_use_total": 40, "json_broken": 0,
                                                                 "raw_token_leak": 0, "cache_n_list": [0, 25000, None]},
-                                                    "metrics": {"acceptance": 0.75, "draft_n": 900, "predicted_n": 1200}}}]
+                                                    "metrics": {"acceptance": 0.75, "draft_n": 900, "predicted_n": 1200,
+                                                                "prompt_n": 2000, "cached_n": 8000}}}]
         r = summarize_cc(sums)[0]
+        self.assertEqual(r["prompt_n"], 2000)
+        self.assertEqual(r["cached_n"], 8000)
+        self.assertAlmostEqual(r["cache_hit"], 0.8)
         self.assertEqual(r["task"], "M1")
         self.assertEqual(r["pass"], 1)
         self.assertEqual(r["tool_use_total"], 40)

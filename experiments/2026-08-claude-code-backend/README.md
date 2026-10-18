@@ -1,6 +1,14 @@
-# llama.cpp (llama-swap) による Claude Code バックエンド
+# Claude Code バックエンド: Qwen3.6-35B-A3B on RTX 4080 SUPER
 
-RTX 4080 SUPER (16GB) 上で **Qwen3.6-35B-A3B** を動かし、Claude Code のバックエンドとして使うための構成と実測記録。
+llama.cpp (llama-swap) で Qwen3.6-35B-A3B を 16 GB GPU に載せ、Claude Code のバックエンドとして実タスクで評価した記録。量子化 3 種 × `--n-cpu-moe` の境界探索、プレフィックスキャッシュのヒット率、256k 化の検証を含む。
+
+| 項目     | 値                                                                                                 |
+| -------- | -------------------------------------------------------------------------------------------------- |
+| 期間     | 2026-08-16 〜 08-22                                                                                |
+| 稼働構成 | [deploy/llama-swap](../../deploy/llama-swap/README.md)(config.yaml / compose / ccshim / zshrc)     |
+| 実タスク | `github.com/mktkhr/rag` @ `c2181d0` に対する M0〜M3(各試行は `bench/<構成>-<課題>` ブランチに保持) |
+
+> 節番号は元記録のまま。1(構成)・2(クライアント設定)・10(落とし穴)は運用手順として [deploy/llama-swap/README.md](../../deploy/llama-swap/README.md) に移した。
 
 ## 結論
 
@@ -13,74 +21,6 @@ RTX 4080 SUPER (16GB) 上で **Qwen3.6-35B-A3B** を動かし、Claude Code の�
 | **B(採用)** | UD-IQ4_XS  | 10    | 15,329 MiB | **4/4 PASS**             | **9.4 分** |
 | C           | UD-IQ3_S   | 0     | 15,032 MiB | 4/4 PASS                 | 14.6 分    |
 | A           | UD-Q4_K_XL | 17    | 15,358 MiB | 3/4(React/TS で時間切れ) | 28.9 分    |
-
----
-
-## 1. 構成
-
-```
-別 PC の Claude Code
-   ↓ ANTHROPIC_BASE_URL
-ccshim (:11436)          ← messages 内の role:"system" をトップレベルに畳み込む
-   ↓
-llama-swap (:11435)      ← model 名を見てモデルを入れ替える
-   ↓
-llama-server             ← llama.cpp b10438 / CUDA 12.8
-```
-
-`docker compose up -d` で両方が起動する。`restart: unless-stopped`。
-
-### ccshim が必須である理由
-
-Claude Code は **トップレベル `system` とは別に、`messages` 配列へ `role:"system"` のメッセージを注入**する(中身は Agent タイプ一覧)。Qwen 系の Jinja チャットテンプレートはこれを
-
-```
-raise_exception('System message must be at the beginning')
-```
-
-で拒否するため、**llama-server は全リクエストに 500 を返す**。最小再現も確認済みで、`messages` に `role:"system"` が 1 つでもあれば位置に関係なく失敗する。ccshim はこれをトップレベル `system` の末尾ブロックに移すだけで、内容は失われない。
-
-**SSE は逐次転送しなければならない。** バッファすると thinking が長いときにクライアントから無応答の接続に見え、アイドルタイムアウトで再送が多重化して破綻する(実測: thinking 26,000 トークンで 282 秒ごとに再送、待ち行列が 502→680→842→1,004 秒と膨張)。
-
-### なぜ Docker で公開するか
-
-ホストのプロセスとして動かすと ufw(`DEFAULT_INPUT_POLICY=DROP`)に阻まれて LAN から届かない。Docker の publish は iptables の `DOCKER` チェーンに入るため **ufw の設定変更なしで LAN に出せる**。llama-swap (:11435) が最初から届いていたのはこのため。
-
----
-
-## 2. クライアント設定(別 PC)
-
-`zshrc-snippet.sh` を `~/.zshrc` から `source` する。
-
-```bash
-ccb          # B(UD-IQ4_XS)で起動 ← 推奨
-ccc          # C(UD-IQ3_S)で起動
-ccd          # D(UD-IQ3_S、256k・KV q4_0)で起動。長文コンテキストが必要なときのみ(section 12 参照)
-ccstat       # ロード中のモデルを表示
-```
-
-手動で起動する場合:
-
-```bash
-ANTHROPIC_BASE_URL=http://192.168.0.144:11436 \
-ANTHROPIC_API_KEY=dummy \
-ANTHROPIC_AUTH_TOKEN=dummy \
-ANTHROPIC_MODEL=qwen36-35b-iq4xs \
-API_TIMEOUT_MS=1800000 \
-CLAUDE_CODE_MAX_CONTEXT_TOKENS=131072 \
-claude
-```
-
-| 設定                                                 | 理由                                                                                               |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| ポート **11436**(shim)                               | 11435 に直結すると全リクエストが 500 になる                                                        |
-| `ANTHROPIC_API_KEY` と `ANTHROPIC_AUTH_TOKEN` の両方 | どちらのヘッダが使われるかはバージョン依存                                                         |
-| `ANTHROPIC_MODEL`                                    | 未設定だと Claude Code の既定名が送られ 404。`claude-opus-5` / `claude-sonnet-5` は alias 登録済み |
-| `API_TIMEOUT_MS`                                     | 既定 600 秒。thinking が伸びると 1 リクエストが 500 秒を超える                                     |
-| `CLAUDE_CODE_MAX_CONTEXT_TOKENS`                     | 未知のモデル名だと **200k と誤認**する。実際は 131,072                                             |
-| 起動前のウォームアップ                               | モデル切替中に `/v1/messages` を叩くと connection reset で切られる                                 |
-
-**claude-code-router は不要かつ有害。** llama-server が `/v1/messages` をネイティブ実装しているため変換層は要らない。router は使えるエンドポイントを探して `model` 無しの探索リクエストを撃つため、llama-swap が全部 404 を返し認証エラーとして表面化する。
 
 ---
 
@@ -254,22 +194,6 @@ llama.cpp を選ぶ実利は tool call 品質ではなく、**モデルごとに
 
 ---
 
-## 10. 落とし穴
-
-| 事象                              | 原因 / 対処                                                                                    |
-| --------------------------------- | ---------------------------------------------------------------------------------------------- |
-| 全リクエストが 500                | Claude Code の `messages` 内 `role:"system"`。**ccshim 必須**                                  |
-| thinking が長いと再送が多重化     | シムが SSE をバッファしていた。**逐次転送にする**                                              |
-| LAN から届かない                  | ufw が `DROP`。**Docker で publish する**(ufw を迂回)                                          |
-| `no model id could be identified` | ボディが JSON として解釈されていない。**`Content-Type: application/json` を付ける**            |
-| `no router for requested model`   | `ANTHROPIC_MODEL` 未設定、またはモデル名の誤り(`qwen3.6-` ではなく **`qwen36-`**)              |
-| コンテキスト超過                  | Claude Code が 200k と誤認。**`CLAUDE_CODE_MAX_CONTEXT_TOKENS=131072`**                        |
-| モデル切替直後に connection reset | ロード中の `/v1/messages` は待たずに切られる。**先に `/v1/chat/completions` でウォームアップ** |
-| VRAM 測定が壊れる                 | llama-swap は `ttl` 未指定で常駐する。**計測前に停止する**                                     |
-| `-ctk q4_0`                       | 公式が tool calling 品質を有意に落とすと明記。**q8_0 まで**                                    |
-
----
-
 ## 11. 測定上の訂正と限界
 
 記録として残す。
@@ -301,10 +225,10 @@ llama.cpp を選ぶ実利は tool call 品質ではなく、**モデルごとに
 
 section 5 と同じ手法(モデルロード直後の VRAM ピークを nvidia-smi で採取)。
 
-| ncmoe | VRAM 実測  | 余裕(総容量比) | 判定                                     |
-| ----- | ---------- | --------------- | ----------------------------------------- |
-| 4     | 15,787 MiB | 589 MiB         | 既存構成(~1,000 MiB 前後)より薄く、見送り |
-| **6** | **15,240 MiB** | **1,136 MiB** | 既存構成と同等の余裕。**採用**            |
+| ncmoe | VRAM 実測      | 余裕(総容量比) | 判定                                      |
+| ----- | -------------- | -------------- | ----------------------------------------- |
+| 4     | 15,787 MiB     | 589 MiB        | 既存構成(~1,000 MiB 前後)より薄く、見送り |
+| **6** | **15,240 MiB** | **1,136 MiB**  | 既存構成と同等の余裕。**採用**            |
 
 D-B(オフロードなし、q4_0)は 15,521 MiB、余裕 855 MiB で既存構成と同水準。
 
@@ -312,11 +236,11 @@ D-B(オフロードなし、q4_0)は 15,521 MiB、余裕 855 MiB で既存構成
 
 同一プロンプト(`prompt_n=18,024`)を両構成に投げた簡易計測(`llama-bench` ではなく `/v1/chat/completions` の `timings` を使用。深さは 18k 止まりで 256k 全域はカバーしていない)。
 
-| 指標                 | D-A(q8_0 + ncmoe6) | D-B(q4_0・オフロードなし) |
-| -------------------- | ------------------- | -------------------------- |
-| VRAM                 | 15,240 MiB           | 15,521 MiB                  |
-| prompt (pp) t/s       | 3,657.7              | **5,350.0**                 |
-| generation (tg) t/s   | 89.1                 | **126.5**                   |
+| 指標                | D-A(q8_0 + ncmoe6) | D-B(q4_0・オフロードなし) |
+| ------------------- | ------------------ | ------------------------- |
+| VRAM                | 15,240 MiB         | 15,521 MiB                |
+| prompt (pp) t/s     | 3,657.7            | **5,350.0**               |
+| generation (tg) t/s | 89.1               | **126.5**                 |
 
 **D-B が pp で約1.46倍、tg で約1.42倍速い。** section 6 の所見(「CPU オフロードはプレフィルを直撃する」)と整合する結果で、ncmoe=6 の D-A は重みの一部を CPU に逃がしている分だけ確実に遅い。D-B は速度面では明確に有利だが、**KV を q4_0 に落としているため section 10 の落とし穴表にある「tool calling 品質を有意に落とす」という公式の指摘のリスクをそのまま抱える**。今回の計測では tool_use を伴う実タスクでは検証していない(素のテキスト応答のみ)。
 
@@ -324,18 +248,18 @@ D-B(オフロードなし、q4_0)は 15,521 MiB、余裕 855 MiB で既存構成
 
 section 8 の M1(`/healthz` 追加)・M2(タイムアウト付与)の2課題を、対象 `github.com/mktkhr/rag` @ `c2181d0` に対して D-A/D-B それぞれで実行(`--dangerously-skip-permissions` で無人実行、15分打ち切り)。M0/M3 は今回の目的(tool_use の構造的な壊れ方の検出)には効果が薄い・時間がかかりすぎるため対象外にした。
 
-| 課題 | D-A(q8_0 + ncmoe6)   | D-B(q4_0・オフロードなし) |
-| ---- | ---------------------- | ---------------------------- |
+| 課題 | D-A(q8_0 + ncmoe6)          | D-B(q4_0・オフロードなし)      |
+| ---- | --------------------------- | ------------------------------ |
 | M1   | PASS / 29 ターン / 319.0 秒 | PASS / 30 ターン / **84.3 秒** |
 | M2   | PASS / 22 ターン / 167.7 秒 | PASS / 37 ターン / **81.5 秒** |
 
 両構成・両課題とも `go build` / `go vet` が通り、要求どおり `%w` wrap と `context.WithTimeout` が実装された。tool_use の構造化出力(section 8 と同じ観点)も確認した。
 
-| 指標           | D-A(M1+M2 計) | D-B(M1+M2 計) |
-| -------------- | -------------- | -------------- |
-| tool_use 総数  | 47             | 64             |
-| 引数 JSON 破損 | **0**          | **0**          |
-| 生トークン露出(`<tool_call>`等) | **0** | **0** |
+| 指標                            | D-A(M1+M2 計) | D-B(M1+M2 計) |
+| ------------------------------- | ------------- | ------------- |
+| tool_use 総数                   | 47            | 64            |
+| 引数 JSON 破損                  | **0**         | **0**         |
+| 生トークン露出(`<tool_call>`等) | **0**         | **0**         |
 
 **q4_0 化で tool calling が構造的に壊れる兆候は見られなかった。** 一方、D-B は M2 で D-A より多いターン数(37 対 22)を要しており、ターン数だけ見ると D-B のほうが手数がやや多い課題もある(M1 は逆に D-A が29・D-Bが30でほぼ同数)。n=1 なので恒常的な傾向かは未確認(section 11 の限界と同様の注意が必要)。**所要時間は D-B が M1 で3.8倍、M2 で2.1倍速く**、ターン数の増分を吸収してなお圧倒的に速い。
 

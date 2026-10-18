@@ -1,0 +1,19 @@
+# Open WebUI から叩かれる前提の最小設定。
+# 既定値をベースに、API 利用に必要な差分だけを上書きする。
+use_default_settings: true
+
+server:
+  # 生成値。使い回さないこと
+  secret_key: "CHANGE_ME"  # openssl rand -hex 32 で生成し settings.yml に置く(gitignore)
+  # limiter を有効にすると Open WebUI の連続クエリが bot 判定で 429 になる。
+  # このインスタンスは webui ネットワーク内からしか到達できないので無効で問題ない
+  limiter: false
+
+search:
+  # ここが肝。既定は html のみで、json を足さないと Open WebUI 側は
+  # 検索を実行したように見えて結果ゼロのまま無言で失敗する
+  formats:
+    - html
+    - json
+  safe_search: 0
+  autocomplete: ""

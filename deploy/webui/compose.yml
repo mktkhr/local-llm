@@ -1,0 +1,66 @@
+# iPhone から Tailscale 経由で使う PWA チャット UI。
+#
+# 経路:
+#   iPhone --(Tailscale WireGuard)--> tailscale serve (TLS 終端)
+#          --> open-webui:8080 --> llama-swap:8080/v1 --> llama-server
+#
+# TLS は tailscale serve が Let's Encrypt 証明書で終端するため、
+# ここでは平文 HTTP でホストの 127.0.0.1 にだけ公開する。
+# (0.0.0.0 に晒すと LAN から無認証で到達できてしまう)
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      # tailscale serve からのみ叩ければよいのでループバックに限定
+      - "127.0.0.1:${OPEN_WEBUI_PORT:-3000}:8080"
+    environment:
+      # --- 推論バックエンド ---
+      # llama_default ネットワーク内なのでコンテナ名 + 内部ポート 8080。
+      # ホスト側の 11435 ではない点に注意。
+      OPENAI_API_BASE_URL: "http://llama-swap:8080/v1"
+      # llama-swap は無認証。値は空だと UI が接続を無効扱いするのでダミーを置く
+      OPENAI_API_KEY: "llama-swap"
+      # Ollama (11434) を探しに行かせない。まだ起動しているが用途が別
+      ENABLE_OLLAMA_API: "false"
+
+      # --- ウェブサーチ ---
+      ENABLE_WEB_SEARCH: "true"
+      WEB_SEARCH_ENGINE: "searxng"
+      SEARXNG_QUERY_URL: "http://searxng:8080/search?q=<query>"
+      WEB_SEARCH_RESULT_COUNT: "5"
+      WEB_SEARCH_CONCURRENT_REQUESTS: "5"
+
+      # --- タイムアウト ---
+      # llama-swap のモデル差し替えは 35B クラスで数十秒かかる。
+      # 既定 (300s) でも足りるが、256k 構成の初回ロードを考慮して伸ばす
+      AIOHTTP_CLIENT_TIMEOUT: "900"
+
+      # 初回アクセス時に作る管理者アカウントでログインを required にする
+      WEBUI_AUTH: "true"
+    volumes:
+      - open-webui-data:/app/backend/data
+    networks:
+      - llama
+      - webui
+
+  searxng:
+    image: docker.io/searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+    # 外部公開しない。open-webui からコンテナ間通信でのみ使う
+    volumes:
+      - ./searxng:/etc/searxng
+    networks:
+      - webui
+
+volumes:
+  open-webui-data:
+
+networks:
+  # llama-swap が属する既存ネットワーク (deploy/llama/compose.yml が作成)
+  llama:
+    name: llama_default
+    external: true
+  webui:

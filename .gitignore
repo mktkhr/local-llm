@@ -4,6 +4,9 @@ deploy/auth-gate/.env
 # llama-swap のローカル設定(HF_TOKEN / ポート)
 deploy/llama-swap/.env
 
+# PrismML 版 llama.cpp のバイナリ(config.yaml の bonsai2-27b が参照。手動配置、約 200 MB)
+deploy/llama-swap/prism/
+
 # PD分離 PoC のローカル設定と KV キャッシュ実体
 experiments/2026-08-pd-split/config/.env
 experiments/2026-08-pd-split/config/kv/*

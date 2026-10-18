@@ -2,7 +2,7 @@
 
 RTX 4080 SUPER (16 GB) 上の Qwen3.6-35B-A3B に対して、MTP ヘッド / n-gram / 外部 draft による投機デコードが decode を速くするか、Claude Code の実ワークロードで受理率はいくつか、`--n-cpu-moe` と prefix cache の下でも利得が残るかを測る。
 
-**計画中。設計は [notes/00-plan.md](notes/00-plan.md)。**
+**計測中(Phase 0 完了、Phase 1 準備中)。設計は [notes/00-plan.md](notes/00-plan.md)。**
 
 | 項目       | 値                                                                        |
 | ---------- | ------------------------------------------------------------------------- |
@@ -22,7 +22,19 @@ RTX 4080 SUPER (16 GB) 上の Qwen3.6-35B-A3B に対して、MTP ヘッド / n-g
 
 ## 計測条件
 
-<固定したもの / 動かしたもの。コマンドや config は `config/` `scripts/` にあるものをリンクで指す>
+設計は [notes/00-plan.md](notes/00-plan.md)、ツールの実装は [notes/01-implementation-plan.md](notes/01-implementation-plan.md)。
+
+### Phase 0(環境確認、2026-10-18)で確定したこと
+
+| 項目                                    | 結果                                                                                                                                                                                                                                                                         |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| llama.cpp                               | `ghcr.io/mostlygeek/llama-swap:cuda` 同梱の **build 10920**(commit `eafe15a5e`)。`--spec-type draft-mtp / ngram-simple / ngram-mod` と `--spec-draft-n-max` が使える。deploy と同じイメージをダイジェストでピン                                                              |
+| MTP ヘッドの VRAM コスト                | `unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-IQ3_S` は **14,635 MiB**。通常版 IQ3_S(13,043 MiB)より **+1,592 MiB**。128k の KV(q8_0、1,360 MiB)より大きい                                                                                                                            |
+| C'(主力 C 相当、フル GPU)               | IQ3_S は 128k / 96k / `--n-cpu-moe 2` のいずれも KV 1,360 MiB が確保できず OOM。**UD-IQ3_XXS に落として 128k フル GPU**(ロード後 15,882 MiB、56k prefill 中ピーク 15,914 MiB、推論中の増分 32 MiB)。基準の 15.5 GB は超えるが、KV と compute buffer はロード時確保のため採用 |
+| 受理率の取得                            | `/metrics` に `llamacpp:spec_decode_num_draft_tokens_total` / `_num_accepted_tokens_total` / `_num_drafts_total` / `_num_accepted_tokens_per_pos_total{position}` が存在。**`/v1/messages` の応答に `timings` は無い**ため、tok/s も `/metrics` 差分で取る                   |
+| スモーク(C' / mtp2 / W1-01、56k tokens) | decode **125 tok/s**、draft 52 / accepted 36(受理率 **0.69**、draft/generated 0.81)、status 200                                                                                                                                                                              |
+| プロンプト                              | ccshim ログ 2,278 件から W1 × 3(224〜461 KB、13〜103 メッセージ)、W2 × 3(345〜425 KB)を抽出。`scripts/data/prompts_manifest.json` に形だけ記録(本体は commit しない)                                                                                                         |
+| B'(対照、IQ4_XS + ncmoe)                | ncmoe は Phase 0 で再確定(下記)                                                                                                                                                                                                                                              |
 
 ## 結果
 

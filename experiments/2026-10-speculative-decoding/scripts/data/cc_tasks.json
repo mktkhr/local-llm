@@ -1,0 +1,12 @@
+[
+  {
+    "id": "M1",
+    "prompt": "backend に GET /healthz を追加してください。DB(dbClient)と Ollama(ollamaClient)の疎通を確認し、どちらかが失敗したら 503 で、両方成功なら 200 で JSON を返します。既存の gin ルーティング(backend/cmd/api/main.go)に登録してください。go build と go vet が通る状態にしてください。",
+    "judge": "cd backend && go build ./... && go vet ./... && grep -q '\"/healthz\"' cmd/api/main.go"
+  },
+  {
+    "id": "M2",
+    "prompt": "backend/internal/db/postgres.go の SearchSimilar に 30 秒のコンテキストタイムアウトを付け、エラーは %w で wrap して返してください。go build と go vet が通る状態にしてください。",
+    "judge": "cd backend && go build ./... && go vet ./... && grep -q 'context.WithTimeout' internal/db/postgres.go && grep -q '%w' internal/db/postgres.go"
+  }
+]

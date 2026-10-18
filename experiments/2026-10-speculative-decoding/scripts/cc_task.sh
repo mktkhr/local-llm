@@ -89,6 +89,8 @@ if [ "$DRY_RUN" = "1" ]; then
   echo "judge: $JUDGE  (cwd=$WT)"
 else
   git -C "$WT" add -A >/dev/null 2>&1 || true
+  # go build が残したバイナリ等は patch に入れない(再判定で git apply が通らなくなる)
+  git -C "$WT" diff --cached --numstat | awk '$1 == "-" { print $3 }' | while read -r bin; do git -C "$WT" reset -q -- "$bin" || true; done
   git -C "$WT" diff --cached --stat > "$OUT/diff.txt" || true
   git -C "$WT" diff --cached > "$OUT/diff.patch" || true
   CHANGED=$(git -C "$WT" diff --cached --name-only | wc -l | tr -d ' ')

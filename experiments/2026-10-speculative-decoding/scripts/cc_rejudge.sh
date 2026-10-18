@@ -17,7 +17,19 @@ for d in "${DIRS[@]}"; do
   git -C "$RAG_REPO" worktree remove --force "$WT" >/dev/null 2>&1 || true
   git -C "$RAG_REPO" worktree add --detach "$WT" "$RAG_REV" >/dev/null 2>&1
   PASS=false; JEXIT=
-  if [ -s "$d/diff.patch" ] && git -C "$WT" apply "$(pwd)/$d/diff.patch" 2> "$d/rejudge-apply.log"; then
+  # 旧い diff.patch にバイナリ(go build の成果物)が混ざっていると apply できないので、そのセクションを除く
+  python3 - "$d/diff.patch" "$d/diff.nobin.patch" <<'PY'
+import re, sys
+src, dst = sys.argv[1:]
+try:
+    text = open(src).read()
+except FileNotFoundError:
+    text = ""
+sections = re.split(r"(?m)^(?=diff --git )", text)
+keep = [sec for sec in sections if sec and "Binary files" not in sec and "GIT binary patch" not in sec]
+open(dst, "w").write("".join(keep))
+PY
+  if [ -s "$d/diff.nobin.patch" ] && git -C "$WT" apply "$(pwd)/$d/diff.nobin.patch" 2> "$d/rejudge-apply.log"; then
     set +e; ( cd "$WT" && bash -c "$JUDGE" ) > "$d/judge.log" 2>&1; JEXIT=$?; set -e
     [ "$JEXIT" -eq 0 ] && PASS=true
   else

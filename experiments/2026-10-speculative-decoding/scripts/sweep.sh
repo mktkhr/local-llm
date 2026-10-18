@@ -17,6 +17,7 @@
 #   WORKLOADS       W1 W2 W3 W4 のうち流すもの(既定 全部)
 #   HEALTH_TIMEOUT  /health 待ちの上限秒(既定 2400。初回は GGUF 取得で 30 分超える)
 #   DRY_RUN         1 なら docker / curl / python3 を echo に置き換える
+#   RESUME_TS       途中で止まった掃引の TS(例 20261018-115236)。同じ JSONL に追記して再開する
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -62,7 +63,9 @@ if [ "$DRY_RUN" != "1" ]; then
 fi
 trap 'echo "中断: llama-spec を停止します" >&2; $COMPOSE down llama-spec >/dev/null 2>&1 || true' INT TERM
 mkdir -p results/raw
-TS="$(date +%Y%m%d-%H%M%S)"
+# RESUME_TS=<既存の TS> を与えると、その掃引の JSONL / LOG に追記して再開する(途中で止まった掃引の続き)。
+# aggregate は sweep=ファイル名で対付けするので、同じファイルに書かないと baseline と対にならない
+TS="${RESUME_TS:-$(date +%Y%m%d-%H%M%S)}"
 OUT="results/raw/sweep-${TS}.jsonl"
 LOG="results/raw/sweep-${TS}.log"
 echo "=== sweep ${TS}: blocks=${BLOCKS} configs=[${CONFIGS}] specs=[${SPECS}] workloads=[${WORKLOADS}] ===" | tee -a "$LOG"
@@ -89,11 +92,19 @@ all_prompts() {
   done
 }
 
+# 戻り値: 0 = healthy / 2 = 起動時に失敗(その設定を飛ばす)/ 1 = タイムアウト(掃引を止める)
 wait_health() {
   local waited=0
   while true; do
     if [ "$DRY_RUN" = "1" ]; then run curl -sf "$URL/health"; return 0; fi
     curl -sf "$URL/health" >/dev/null 2>&1 && return 0
+    # コンテナが落ちた、または ggml_abort / CUDA error で止まったまま(abort 後にプロセスが残り Running のままになる)
+    if [ "$(docker inspect -f '{{.State.Running}}' llama-spec 2>/dev/null)" != "true" ] \
+       || docker logs llama-spec 2>&1 | grep -qE "ggml_abort|CUDA error|exiting due to model loading error|failed to allocate"; then
+      echo "llama-spec が起動中に失敗しました(${waited}s)" | tee -a "$LOG" >&2
+      docker logs --tail 30 llama-spec 2>&1 | tee -a "$LOG" >&2 || true
+      return 2
+    fi
     sleep 5; waited=$((waited + 5))
     if [ "$waited" -ge "$HEALTH_TIMEOUT" ]; then
       echo "サーバが ${HEALTH_TIMEOUT} 秒以内に起動しませんでした" | tee -a "$LOG" >&2
@@ -128,16 +139,18 @@ for ((b = 1; b <= BLOCKS; b++)); do
       fi
       run curl -s "$URL/props" -o "results/raw/props-${TS}-${config}-${spec}-${b}.json"
 
-      # 捨てリクエスト(W1 の先頭)。プレフィックスを温め、W1 を全て warm で測る
+      # 捨てリクエスト(W1 の先頭)。cold の TTFT として primer-<TS>.jsonl に残す(sweep-*.jsonl には混ぜない)
       primer=""; [[ " $WORKLOADS " == *" W1 "* ]] && primer="$(prompt_files_of W1 | head -1)"
       if [ -n "$primer" ]; then
         run python3 scripts/spec_bench.py --url "$URL" --endpoint messages --prompt-file "$primer" \
-          --n-predict 8 --out /dev/null --config "$config" --spec "$spec" --workload W1 \
+          --n-predict 8 --out "results/raw/primer-${TS}.jsonl" --config "$config" --spec "$spec" --workload W1 \
           --prompt-id primer --block "$b" --nvidia-smi 0 || true
       fi
 
-      # ブロック番号を seed にした決定的シャッフル(macOS にも shuf が無いので python で)
-  for f in $(all_prompts | python3 -c 'import random,sys; l=sys.stdin.read().split(); random.Random(int(sys.argv[1])).shuffle(l); print("\n".join(l))' "$b"); do
+      # W1 は primer 直後に連続して流し、全て warm prefix で測る。その後に W2〜W4。
+      # 各群の中だけをブロック番号 seed で決定的にシャッフルする(macOS に shuf が無いので python で)
+      w1_files=""; [[ " $WORKLOADS " == *" W1 "* ]] && w1_files="$(prompt_files_of W1)"
+      for f in $( { echo "$w1_files" | grep -v "^$" | shuffle_by "$b"; all_prompts | grep -v "/W1-" | shuffle_by "$b"; } ); do
         pid="$(basename "$f" .json)"; w="${pid%%-*}"
         run python3 scripts/spec_bench.py --url "$URL" --endpoint "$(endpoint_of "$w")" --prompt-file "$f" \
           --n-predict "$(n_predict_of "$w")" --out "$OUT" --config "$config" --spec "$spec" \

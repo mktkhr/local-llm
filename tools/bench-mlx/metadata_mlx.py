@@ -1,6 +1,6 @@
 """測定時バージョン・環境情報の取得 (Apple Silicon / MLX)。
 
-docs/06-evaluation.md §3 のバージョン記録要件に対応した MLX 版。
+docs/evaluation.md §3 のバージョン記録要件に対応した MLX 版。
 bench/metadata.py に対応するが、採取項目は Mac/MLX 用に差し替えている。
 """
 

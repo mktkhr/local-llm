@@ -1,6 +1,6 @@
-# scripts/bench-mlx/
+# tools/bench-mlx/
 
-[docs/06-evaluation.md](../../docs/06-evaluation.md) の評価方法論を **Apple Silicon / MLX 環境向け** に実装した計測スクリプト群。Linux + CUDA + Ollama 版は [scripts/bench/](../bench/)。
+[docs/evaluation.md](../../docs/evaluation.md) の評価方法論を **Apple Silicon / MLX 環境向け** に実装した計測スクリプト群。Linux + CUDA + Ollama 版は [tools/bench/](../bench/)。
 
 機能は bench/ と同じ:**速度計測 / 最大 ctx 二分探索 / KV キャッシュ切替 / Needle In A Haystack / Coding 評価 / Summary 評価**。加えて Mac の「なぜ遅いか」分析用に **ctx 依存スイープ(`run_ctx_sweep_mlx.py`)** を持つ。
 
@@ -24,12 +24,12 @@
 | huggingface_hub | 0.24 以上                          | `mlx-community/*` モデル取得                          |
 | git             | 任意                               | `metadata_mlx.py` がコミット hash を採取するため      |
 
-[docs/mac/01-setup.md](../../docs/mac/01-setup.md) でセットアップ手順、ハードウェア事前確認、ストアアプリ停止などを確認すること。
+[docs/setup-mac.md](../../docs/setup-mac.md) でセットアップ手順、ハードウェア事前確認、ストアアプリ停止などを確認すること。
 
 ## セットアップ
 
 ```bash
-cd scripts/bench-mlx
+cd tools/bench-mlx
 uv sync
 ```
 
@@ -38,7 +38,7 @@ uv sync
 ## 構成
 
 ```
-scripts/bench-mlx/
+tools/bench-mlx/
 ├── client_mlx.py         # mlx-lm のラッパー(streaming TTFT 計測込み)
 ├── metadata_mlx.py       # macOS / Apple Silicon / mlx version / git hash
 ├── memory_mlx.py         # mx.get_peak_memory / device_info / vm_stat ベースの計測
@@ -49,7 +49,7 @@ scripts/bench-mlx/
 ├── run_summary_mlx.py    # Summary 評価ランナー
 ├── pull_models_mlx.py    # mlx-community のモデルを一括 huggingface-hub 取得
 ├── run_all_mlx.sh        # 全モデルに対して ctx_search → speed → needle → coding → summary を回す
-├── aggregate_mlx.py      # results/ を Markdown 表に集計(docs/04-results.md 用)
+├── aggregate_mlx.py      # results/ を Markdown 表に集計(experiments/<実験>/README.md 用)
 ├── scorer.py -> ../bench/scorer.py    # scoring ロジックは bench/ と共有 (symlink)
 ├── data/ -> ../bench/data             # coding/summary/needle データは bench/ と共有 (symlink)
 ├── results/              # 計測結果(gitignore)
@@ -206,11 +206,11 @@ uv run python run_summary_mlx.py --model mlx-community/Qwen3.5-9B-MLX-4bit --ctx
 uv run python aggregate_mlx.py | tee /tmp/results_table.md
 ```
 
-`results/` 配下から最新の各計測を拾って docs/04-results.md 用の Markdown 表を生成する。
+`results/` 配下から最新の各計測を拾って experiments/<実験>/README.md 用の Markdown 表を生成する。
 
 ## 採点ポリシー
 
-[docs/06-evaluation.md §7](../../docs/06-evaluation.md) と同じ。**LLM-as-a-judge を使わない**。`scorer.py` は bench/ から symlink しているため、Linux 版と完全に同一ロジック。
+[docs/evaluation.md §7](../../docs/evaluation.md) と同じ。**LLM-as-a-judge を使わない**。`scorer.py` は bench/ から symlink しているため、Linux 版と完全に同一ロジック。
 
 - Coding は実行ベース(pytest 不要、stdlib のみ)で pass/fail を取る
 - Summary は n-gram 被覆率で文字列ベースに判定する
@@ -229,7 +229,7 @@ uv run python aggregate_mlx.py | tee /tmp/results_table.md
 
 ## 新規 Mac 環境で評価を一通り実施する手順
 
-ハードウェアが変わった時、最初から最後まで何を順に実行すれば `docs/04-results.md` にエントリが 1 つ完成するか、を以下にまとめる。所要時間は GPU と回線次第で 4〜10 時間程度を見込む。
+ハードウェアが変わった時、最初から最後まで何を順に実行すれば `experiments/<実験>/README.md` にエントリが 1 つ完成するか、を以下にまとめる。所要時間は GPU と回線次第で 4〜10 時間程度を見込む。
 
 ### 0. 前提確認
 
@@ -240,7 +240,7 @@ uv --version           # 0.8 以上を確認
 python3 -c "import mlx.core as mx; print(mx.device_info())"
 ```
 
-`device_name` / `memory_size` / `max_recommended_working_set_size` を控える(後で `docs/04-results.md` のヘッダーに記載)。
+`device_name` / `memory_size` / `max_recommended_working_set_size` を控える(後で `experiments/<実験>/README.md` のヘッダーに記載)。
 
 ### 1. ストアアプリの停止
 
@@ -261,7 +261,7 @@ killall ollama 2>/dev/null
 | 重み = 上限 − 2〜5 GB                       | 境界。KV 量子化必須、長 ctx は厳しい |
 | 重み > 上限                                 | 4bit でも乗らないなら対象外          |
 
-### 3. docs/04-results.md に新規 Mac セクションを起こす
+### 3. experiments/<実験>/README.md に新規 Mac セクションを起こす
 
 既存 GTX 1080 / RTX 4080 SUPER セクションをテンプレートに、新規 Mac 用のセクションを追加する。**この時点では結果テーブルは空のままで、評価対象選定の根拠だけを書く**(後で結果を埋める)。
 
@@ -294,10 +294,10 @@ uv run python ctx_search_mlx.py --model "$MODEL" --kv-bits 8
 uv run python run_speed_mlx.py --model "$MODEL" --kv-bits 8 --ctx <max_ctx_from_search>
 ```
 
-### 6. 結果を docs/04-results.md にまとめる
+### 6. 結果を experiments/<実験>/README.md にまとめる
 
 ```bash
 uv run python aggregate_mlx.py
 ```
 
-の出力を docs/04-results.md の該当 Mac セクションに転記。続いて[docs/06-evaluation.md §9.4](../../docs/06-evaluation.md) の 10 項目で最終分析を執筆。
+の出力を experiments/<実験>/README.md の該当 Mac セクションに転記。続いて[docs/evaluation.md §9.4](../../docs/evaluation.md) の 10 項目で最終分析を執筆。

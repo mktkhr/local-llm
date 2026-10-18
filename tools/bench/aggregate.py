@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""results/ 配下の最新計測結果を集計して docs/04-results.md 用の Markdown 表を出力する。
+"""results/ 配下の最新計測結果を集計して 実験 README 用の Markdown 表を出力する。
 
 各モデルについて、最新の ctx_search / speed / needle / coding / summary を拾って 1 行にまとめる。
 

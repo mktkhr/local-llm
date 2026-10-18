@@ -1,6 +1,6 @@
 """品質評価の採点ロジック。
 
-docs/06-evaluation.md §7 に準拠する自動採点:
+docs/evaluation.md §7 に準拠する自動採点:
 - Coding: ```python ブロック抽出 → exec → 関数を取り出して tests を回す
 - Summary: 期待キーポイント・決定・TODO の n-gram 被覆率
 - Needle: 出力に needle_id が含まれるかの文字列マッチ

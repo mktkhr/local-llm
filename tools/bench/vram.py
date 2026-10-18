@@ -1,6 +1,6 @@
 """nvidia-smi をポーリングして VRAM 使用量のピークを取る。
 
-GPU 利用率も同時にサンプリング。docs/06-evaluation.md §6.3 に対応。
+GPU 利用率も同時にサンプリング。docs/evaluation.md §6.3 に対応。
 """
 
 from __future__ import annotations

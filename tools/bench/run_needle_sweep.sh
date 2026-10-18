@@ -2,7 +2,7 @@
 # Needle In A Haystack の網羅スイープ。
 #
 # 各モデルについて 4 つの depth(ctx 長)× 3 つの needle 位置 = 12 試行。
-# docs/06-evaluation.md §7.3 の仕様にほぼ合わせている(25/50/75/100% の depth は
+# docs/evaluation.md §7.3 の仕様にほぼ合わせている(25/50/75/100% の depth は
 # モデルごとに max_ctx が違うので、本スクリプトでは絶対値で揃える方が比較しやすく
 # 4096 / 16384 / 65536 / max_ctx を採用)。
 #

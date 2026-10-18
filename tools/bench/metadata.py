@@ -1,6 +1,6 @@
 """測定時バージョン・環境情報の取得。
 
-docs/06-evaluation.md §3 のバージョン記録要件に対応。各計測実行ごとに
+docs/evaluation.md §3 のバージョン記録要件に対応。各計測実行ごとに
 results/<timestamp>/metadata.json として保存される情報を組み立てる。
 """
 

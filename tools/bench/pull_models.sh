@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RTX 4080 SUPER 評価対象モデル(docs/04-results.md の選定)をまとめて pull する。
+# RTX 4080 SUPER 評価対象モデル(experiments/<実験>/README.md の選定)をまとめて pull する。
 #
 # 小さいモデルから順に pull することで、ダウンロード完了次第すぐ計測を始められる
 # ようにしている。Ollama は既存タグがあればスキップするので、再実行しても安全。

@@ -1,6 +1,6 @@
-# scripts/bench/
+# tools/bench/
 
-[docs/06-evaluation.md](../../docs/06-evaluation.md) の評価方法論を実装した計測スクリプト群。**速度計測 / 最大 ctx 二分探索 / KV キャッシュ切替 / Needle In A Haystack / Coding 評価 / Summary 評価** を提供する。
+[docs/evaluation.md](../../docs/evaluation.md) の評価方法論を実装した計測スクリプト群。**速度計測 / 最大 ctx 二分探索 / KV キャッシュ切替 / Needle In A Haystack / Coding 評価 / Summary 評価** を提供する。
 
 ## 前提環境
 
@@ -9,7 +9,7 @@
 | OS            | Linux(本リポジトリは Ubuntu 24.04 で開発) | systemd 連携 と `signal.SIGALRM` を使うため Unix 系前提                                                       |
 | Python        | **3.12 以上**                             | `pyproject.toml` で指定。`uv sync` 時に未満なら自動で適切な版を取得する                                       |
 | uv            | 0.11 以上(動作確認は 0.11.16)             | 依存管理と仮想環境。未インストールなら `curl -LsSf https://astral.sh/uv/install.sh \| sh`                     |
-| Ollama        | **v0.24.0 以上**(計測時の最新 stable)     | 推論ランタイム。[docs/01-setup.md](../../docs/01-setup.md) でセットアップ                                     |
+| Ollama        | **v0.24.0 以上**(計測時の最新 stable)     | 推論ランタイム。[docs/setup-linux.md](../../docs/setup-linux.md) でセットアップ                               |
 | NVIDIA Driver | 計測時の最新                              | GPU 計測時に必須。`nvidia-smi` が PATH に通っていること                                                       |
 | CUDA          | 12.x 以上                                 | Ollama の CUDA バックエンドが要求するもの                                                                     |
 | git           | 任意                                      | `metadata.py` がコミット hash を採取するため(無くても動作はする)                                              |
@@ -19,7 +19,7 @@
 ## セットアップ
 
 ```bash
-cd scripts/bench
+cd tools/bench
 uv sync
 ```
 
@@ -28,7 +28,7 @@ uv sync
 ## 構成
 
 ```
-scripts/bench/
+tools/bench/
 ├── client.py         # Ollama HTTP クライアント(streaming TTFT 計測込み)
 ├── metadata.py       # Ollama / GPU / OS / git hash 等の収集
 ├── vram.py           # nvidia-smi ポーリングで VRAM ピーク取得
@@ -181,7 +181,7 @@ uv run python run_summary.py --model qwen3.5:9b-q4_K_M --ctx 8192 \
 
 ## 採点ポリシー
 
-[docs/06-evaluation.md §7](../../docs/06-evaluation.md) の通り、本評価は **LLM-as-a-judge を使わない**。
+[docs/evaluation.md §7](../../docs/evaluation.md) の通り、本評価は **LLM-as-a-judge を使わない**。
 
 - Coding は実行ベース(pytest 不要、stdlib のみ)で pass/fail を取る
 - Summary は n-gram 被覆率で文字列ベースに判定する
@@ -191,7 +191,7 @@ uv run python run_summary.py --model qwen3.5:9b-q4_K_M --ctx 8192 \
 
 ## 新規 GPU 環境で評価を一通り実施する手順
 
-ハードウェアが変わった時、最初から最後まで何を順に実行すれば `docs/04-results.md` にエントリが 1 つ完成するか、を以下にまとめる。所要時間は GPU と回線次第で 4〜10 時間程度を見込む。
+ハードウェアが変わった時、最初から最後まで何を順に実行すれば `experiments/<実験>/README.md` にエントリが 1 つ完成するか、を以下にまとめる。所要時間は GPU と回線次第で 4〜10 時間程度を見込む。
 
 ### 0. 前提確認
 
@@ -201,7 +201,7 @@ ollama --version            # v0.24.0 以上を確認
 uv --version                # 0.11 以上を確認
 ```
 
-GPU 名 / VRAM / Driver / CUDA / Ollama version を控える(後で `docs/04-results.md` の測定環境ヘッダーに記載)。
+GPU 名 / VRAM / Driver / CUDA / Ollama version を控える(後で `experiments/<実験>/README.md` の測定環境ヘッダーに記載)。
 
 ### 1. systemd override を本評価仕様に固定
 
@@ -231,7 +231,7 @@ systemctl show ollama -p Environment   # 4 つが反映されているか確認
 
 加えて、**速度の下限を引き出す参照用に各系列の最小バリアントも 1〜2 個含める** ことを推奨(Qwen3.5 の 0.8b / 2b 等)。これらは小さい分高速で、「**サイズと品質のトレードオフ曲線**」を完成させる。VRAM に余裕があるので評価コストもほぼ無視できる。
 
-### 3. docs/04-results.md に新規 GPU セクションを起こす
+### 3. experiments/<実験>/README.md に新規 GPU セクションを起こす
 
 既存 GTX 1080 / RTX 4080 SUPER セクションをテンプレートに、新規 GPU 用のセクションを追加する。**この時点では結果テーブルは空のままで、評価対象選定の根拠だけを書く**(後で結果を埋める)。
 
@@ -316,7 +316,7 @@ uv run python kv.py --type f16   # 比較の基準として
 uv run python ctx_search.py --model "$MODEL" --high 262144
 ```
 
-KV を変えたデータは「KV=XXX」を明示して別表として `docs/04-results.md` に追記する。
+KV を変えたデータは「KV=XXX」を明示して別表として `experiments/<実験>/README.md` に追記する。
 
 ### 7.5. 合成タスクで差が出なかった時は難タスクへ差し替え
 
@@ -383,7 +383,7 @@ for i in 1 2 3; do
 done
 ```
 
-### 8. 結果を docs/04-results.md にまとめる
+### 8. 結果を experiments/<実験>/README.md にまとめる
 
 `results/<timestamp>/` 配下の JSON から数値を拾って表に転記。docs/04 既存セクションのフォーマットに合わせて:
 
@@ -391,7 +391,7 @@ done
 2. **100% GPU 動作テーブル**(モデル × 重み × KV × ctx × FA × VRAM × 速度)
 3. **採用推奨表**(用途別 1〜数行)
 4. **Needle / Coding / Summary 詳細表**
-5. **最終分析**(docs/06-evaluation.md §9.4 の 10 項目)
+5. **最終分析**(docs/evaluation.md §9.4 の 10 項目)
 
 ### 9. KV を起動時の既定に戻す(任意)
 

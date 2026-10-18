@@ -10,10 +10,10 @@
 
 本書では 2 台を次のように呼び分けます。**各手順の見出しに、どちらで実行するかを明記します。**
 
-| 呼称 | 役割 | 本 PoC での実機 |
-| --- | --- | --- |
+| 呼称       | 役割                                     | 本 PoC での実機                             |
+| ---------- | ---------------------------------------- | ------------------------------------------- |
 | **GPU 側** | Prefill を担当。NVIDIA GPU + CUDA。Linux | Ryzen 5 3600 / RTX 4080 SUPER 16GB / Ubuntu |
-| **Mac 側** | Decode を担当。Apple Silicon + Metal | Apple M1 / Unified Memory 16GB / macOS |
+| **Mac 側** | Decode を担当。Apple Silicon + Metal     | Apple M1 / Unified Memory 16GB / macOS      |
 
 **GPU 側は Docker で、Mac 側はホストビルドで動かします。** GPU 側を Docker にする理由は [03-phase2-procedure.md](03-phase2-procedure.md) §1 を参照してください。
 
@@ -30,13 +30,13 @@
 
 ### 0.3 事前に必要なもの
 
-| | GPU 側 | Mac 側 |
-| --- | --- | --- |
-| OS | Linux (Ubuntu で確認) | macOS (Apple Silicon) |
-| 必須 | Docker / Docker Compose / NVIDIA ドライバ | Xcode Command Line Tools / Homebrew |
-| GPU | NVIDIA (CUDA 12.8 が動くドライバ) | Apple Silicon |
-| 空きディスク | 30 GB 以上 | 30 GB 以上 |
-| Python | (不要。Docker 内で完結) | 3.10 以上 |
+|              | GPU 側                                    | Mac 側                              |
+| ------------ | ----------------------------------------- | ----------------------------------- |
+| OS           | Linux (Ubuntu で確認)                     | macOS (Apple Silicon)               |
+| 必須         | Docker / Docker Compose / NVIDIA ドライバ | Xcode Command Line Tools / Homebrew |
+| GPU          | NVIDIA (CUDA 12.8 が動くドライバ)         | Apple Silicon                       |
+| 空きディスク | 30 GB 以上                                | 30 GB 以上                          |
+| Python       | (不要。Docker 内で完結)                   | 3.10 以上                           |
 
 GPU 側にホストの CUDA Toolkit (nvcc) は**不要**です。Docker イメージ内でビルドします。
 
@@ -44,11 +44,11 @@ GPU 側にホストの CUDA Toolkit (nvcc) は**不要**です。Docker イメ�
 
 手順の中で次の値を使います。先に確認して控えてください。
 
-| 記号 | 意味 | 確認方法 |
-| --- | --- | --- |
-| `<GPU_IP>` | GPU 側の LAN IP アドレス | GPU 側で `ip -4 addr show \| grep inet` |
+| 記号           | 意味                         | 確認方法                                   |
+| -------------- | ---------------------------- | ------------------------------------------ |
+| `<GPU_IP>`     | GPU 側の LAN IP アドレス     | GPU 側で `ip -4 addr show \| grep inet`    |
 | `<MAC_KV_DIR>` | Mac 側の KV 保存先の絶対パス | 手順 8 で作成。例 `/Users/YOUR_NAME/pd-kv` |
-| `<REPO>` | 本リポジトリの作業コピー | 両側でクローンします |
+| `<REPO>`       | 本リポジトリの作業コピー     | 両側でクローンします                       |
 
 ---
 
@@ -82,36 +82,36 @@ sha256sum Qwen3-4B-Instruct-2507-Q4_K_M.gguf
 
 期待値は次のとおりです。**一致しない場合は先に進まないでください。**
 
-| モデル | サイズ | sha256 |
-| --- | --- | --- |
+| モデル                        | サイズ        | sha256                                                             |
+| ----------------------------- | ------------- | ------------------------------------------------------------------ |
 | Qwen3-4B-Instruct-2507-Q4_K_M | 2,497,281,120 | `3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597` |
-| Qwen3-8B-Q4_K_M | 5,027,784,512 | `120307ba529eb2439d6c430d94104dabd578497bc7bfe7e322b5d9933b449bd4` |
-| Qwen3-14B-Q4_K_M | 9,001,753,984 | `5eaa0870bd81ed3b58a630a271234cfa604e43ffb3a19cd68e54a80dd9d52a66` |
+| Qwen3-8B-Q4_K_M               | 5,027,784,512 | `120307ba529eb2439d6c430d94104dabd578497bc7bfe7e322b5d9933b449bd4` |
+| Qwen3-14B-Q4_K_M              | 9,001,753,984 | `5eaa0870bd81ed3b58a630a271234cfa604e43ffb3a19cd68e54a80dd9d52a66` |
 
 8B / 14B も測る場合は同じ手順で取得します。URL は `unsloth/Qwen3-8B-GGUF` / `unsloth/Qwen3-14B-GGUF` です。
 
 ## 手順 4 【GPU 側】設定ファイルを作る
 
 ```bash
-cd <REPO>/deploy/pd
+cd <REPO>/experiments/2026-08-pd-split/config
 cp .env.example .env
 ```
 
 `.env` を編集します。**`MODEL_DIR` は自分の環境の絶対パスに書き換えてください。**
 
-| 項目 | 説明 |
-| --- | --- |
-| `MODEL_DIR` | GGUF を置いたディレクトリの絶対パス (必須) |
-| `MODEL_FILE` | 使う GGUF のファイル名 |
-| `LLAMA_TAG` | llama.cpp のタグ。**Mac 側と必ず一致させます** |
-| `CUDA_ARCH` | GPU の compute capability。RTX 40 系は `89`、30 系は `86` |
-| `PD_N_CTX` | コンテキスト長。**Mac 側と一致させます** |
-| `PD_KV_TYPE` | KV 量子化型。**Mac 側と一致させます** |
+| 項目         | 説明                                                      |
+| ------------ | --------------------------------------------------------- |
+| `MODEL_DIR`  | GGUF を置いたディレクトリの絶対パス (必須)                |
+| `MODEL_FILE` | 使う GGUF のファイル名                                    |
+| `LLAMA_TAG`  | llama.cpp のタグ。**Mac 側と必ず一致させます**            |
+| `CUDA_ARCH`  | GPU の compute capability。RTX 40 系は `89`、30 系は `86` |
+| `PD_N_CTX`   | コンテキスト長。**Mac 側と一致させます**                  |
+| `PD_KV_TYPE` | KV 量子化型。**Mac 側と一致させます**                     |
 
 ## 手順 5 【GPU 側】サーバを起動する
 
 ```bash
-cd <REPO>/deploy/pd
+cd <REPO>/experiments/2026-08-pd-split/config
 docker compose up -d --build
 ```
 
@@ -119,10 +119,10 @@ docker compose up -d --build
 
 起動するサービスは 2 つです。
 
-| サービス | ポート | 役割 |
-| --- | --- | --- |
-| `llama-pd` | 18080 | Prefill 側の llama-server |
-| `kv-http` | 18081 | 保存された KV ファイルの配信 (nginx。Range 対応) |
+| サービス   | ポート | 役割                                             |
+| ---------- | ------ | ------------------------------------------------ |
+| `llama-pd` | 18080  | Prefill 側の llama-server                        |
+| `kv-http`  | 18081  | 保存された KV ファイルの配信 (nginx。Range 対応) |
 
 ## 手順 6 【GPU 側】起動結果を検証する
 
@@ -135,20 +135,20 @@ docker compose exec llama-pd cat /app/commit.txt
 
 確認する項目です。
 
-| 項目 | 期待値 |
-| --- | --- |
-| `flash_attn` | **`enabled`** (Mac 側と一致していること) |
-| `n_ctx` | `.env` の `PD_N_CTX` と同じ |
-| `KV buffer size` | 手順 12 の Mac 側と同じ値になること |
-| `commit.txt` | `LLAMA_TAG` に対応する commit |
+| 項目             | 期待値                                   |
+| ---------------- | ---------------------------------------- |
+| `flash_attn`     | **`enabled`** (Mac 側と一致していること) |
+| `n_ctx`          | `.env` の `PD_N_CTX` と同じ              |
+| `KV buffer size` | 手順 12 の Mac 側と同じ値になること      |
+| `commit.txt`     | `LLAMA_TAG` に対応する commit            |
 
 Qwen3-4B / n_ctx 16384 の場合の `KV buffer size` の期待値です。
 
 | KV 型 | KV buffer size |
-| --- | --- |
-| f16 | 2,304.00 MiB |
-| q8_0 | 1,224.00 MiB |
-| q4_0 | 648.00 MiB |
+| ----- | -------------- |
+| f16   | 2,304.00 MiB   |
+| q8_0  | 1,224.00 MiB   |
+| q4_0  | 648.00 MiB     |
 
 ## 手順 7 【Mac 側】リポジトリと必要なツールを用意する
 
@@ -253,11 +253,11 @@ cd ~/ghq/github.com/ggml-org/llama.cpp
 grep -E "arch  |n_layer  |n_embd_k_gqa|flash_attn|n_ctx  |KV buffer" <ログ>
 ```
 
-| 項目 | 期待値 |
-| --- | --- |
-| `flash_attn` | **`enabled`** |
+| 項目             | 期待値                       |
+| ---------------- | ---------------------------- |
+| `flash_attn`     | **`enabled`**                |
 | `KV buffer size` | **手順 6 の GPU 側と同じ値** |
-| `n_ctx` | GPU 側と同じ |
+| `n_ctx`          | GPU 側と同じ                 |
 
 **`KV buffer size` が両側で一致しない場合、設定がずれています。先に進まないでください。**
 
@@ -266,19 +266,19 @@ grep -E "arch  |n_layer  |n_embd_k_gqa|flash_attn|n_ctx  |KV buffer" <ログ>
 PD分離の比較対象です。**構成 A (Mac 単体) と構成 B (GPU 単体) の両方を、Mac 側から測ります。**
 
 ```bash
-cd <REPO>/scripts/pd
+cd <REPO>/experiments/2026-08-pd-split/scripts
 
 # 構成 B: GPU 単体
 python3 baseline.py --url http://<GPU_IP>:18080 \
   --tokens 1024 2048 4096 8192 16000 --n-predict 32 \
   --label "B-gpu-only" --model "qwen3-4b-instruct-2507-q4km" --kv-type q8_0 \
-  --out ../../results/baseline.jsonl
+  --out ../results/baseline.jsonl
 
 # 構成 A: Mac 単体
 python3 baseline.py --url http://127.0.0.1:18080 \
   --tokens 1024 2048 4096 8192 16000 --n-predict 32 \
   --label "A-mac-only" --model "qwen3-4b-instruct-2507-q4km" --kv-type q8_0 \
-  --out ../../results/baseline.jsonl
+  --out ../results/baseline.jsonl
 ```
 
 `--label` は `A-` / `B-` で始めてください。集計時に構成を判別する鍵になります。
@@ -290,7 +290,7 @@ python3 baseline.py --url http://127.0.0.1:18080 \
 ```bash
 cd <REPO>
 MODEL=qwen3-4b-instruct-2507-q4km KVTYPE=q8_0 CONNS=8 \
-  bash scripts/pd/sweep_pd.sh \
+  bash experiments/2026-08-pd-split/scripts/sweep_pd.sh \
     "C-nginx-8conn" \
     http://<GPU_IP>:18080 http://127.0.0.1:18080 \
     http://<GPU_IP>:18081 <MAC_KV_DIR> \
@@ -317,25 +317,25 @@ tokens=2053 pd_ok=True prefill=176ms save=61ms xfer=1761ms(87.1MiB/s) restore=20
 
 ```bash
 cd <REPO>
-python3 scripts/pd/aggregate.py
+python3 experiments/2026-08-pd-split/scripts/aggregate.py
 ```
 
 次の 2 つが出力されます。
 
-| ファイル | 内容 |
-| --- | --- |
-| `results/benchmark.csv` | 全試行の一覧 |
+| ファイル                | 内容                         |
+| ----------------------- | ---------------------------- |
+| `results/benchmark.csv` | 全試行の一覧                 |
 | `results/breakeven.csv` | ネットワーク速度別の損益分岐 |
 
 `breakeven.csv` の `network` 列には次が入ります。
 
-| 値 | 意味 |
-| --- | --- |
+| 値              | 意味                                     |
+| --------------- | ---------------------------------------- |
 | `wifi-measured` | 手順 14 の転送実測値をそのまま使った結果 |
-| `1gbe-est` | 実効 112 MB/s と仮定した推定 |
-| `10gbe-est` | 実効 1,100 MB/s と仮定した推定 |
+| `1gbe-est`      | 実効 112 MB/s と仮定した推定             |
+| `10gbe-est`     | 実効 1,100 MB/s と仮定した推定           |
 
-推定値の前提は `scripts/pd/aggregate.py` の `NETWORKS` にあります。**手順 11 で実測した値に差し替えると、自分の環境に即した推定になります。**
+推定値の前提は `experiments/2026-08-pd-split/scripts/aggregate.py` の `NETWORKS` にあります。**手順 11 で実測した値に差し替えると、自分の環境に即した推定になります。**
 
 ## 手順 16 【Mac 側・任意】条件を変えて繰り返す
 
@@ -346,7 +346,7 @@ python3 scripts/pd/aggregate.py
 **GPU 側:**
 
 ```bash
-cd <REPO>/deploy/pd
+cd <REPO>/experiments/2026-08-pd-split/config
 sed -i 's/^PD_KV_TYPE=.*/PD_KV_TYPE=q4_0/' .env
 docker compose up -d --force-recreate
 docker compose logs llama-pd | grep "KV buffer"
@@ -368,7 +368,7 @@ docker compose logs llama-pd | grep "KV buffer"
 Mac 側だけの変更です。`CONNS=1` にすると単一接続になります。
 
 ```bash
-MODEL=... KVTYPE=... CONNS=1 bash scripts/pd/sweep_pd.sh "C-nginx-1conn" ...
+MODEL=... KVTYPE=... CONNS=1 bash experiments/2026-08-pd-split/scripts/sweep_pd.sh "C-nginx-1conn" ...
 ```
 
 ## 手順 17 【Mac 側・任意】KV 量子化の品質影響を測る
@@ -379,13 +379,13 @@ Needle In A Haystack で、KV 量子化が長文からの情報抽出能力を�
 
 ```bash
 cd <REPO>
-mkdir -p scripts/pd/data/needle
+mkdir -p experiments/2026-08-pd-split/scripts/data/needle
 ```
 
 文字数とトークン数の比は言語とトークナイザに依存します。**まず 1 件作って実測してください。**
 
 ```bash
-python3 scripts/bench/data/needle/generate.py --chars 6000 --position-pct 0.5 \
+python3 tools/bench/data/needle/generate.py --chars 6000 --position-pct 0.5 \
   --output /tmp/calib.json
 curl -s http://127.0.0.1:18080/tokenize \
   -H 'Content-Type: application/json' \
@@ -398,7 +398,7 @@ curl -s http://127.0.0.1:18080/tokenize \
 ### 17.2 測る
 
 ```bash
-bash scripts/pd/sweep_needle.sh http://<GPU_IP>:18080 \
+bash experiments/2026-08-pd-split/scripts/sweep_needle.sh http://<GPU_IP>:18080 \
   qwen3-4b-instruct-2507-q4km q4_0 cuda
 ```
 
@@ -416,7 +416,7 @@ bash scripts/pd/sweep_needle.sh http://<GPU_IP>:18080 \
 **GPU 側:**
 
 ```bash
-cd <REPO>/deploy/pd
+cd <REPO>/experiments/2026-08-pd-split/config
 docker compose down
 rm -f kv/*.bin
 ```
@@ -430,7 +430,7 @@ rm -f <MAC_KV_DIR>/*.bin
 
 **KV ファイルは大きいので必ず消してください。** Qwen3-4B / 16k / q8_0 で 1 件 1.2 GiB、掃引 1 回で合計 2.3 GiB になります。
 
-`deploy/pd/kv/` と `deploy/pd/.env` は `.gitignore` 済みのため、消し忘れてもコミットはされません。
+`experiments/2026-08-pd-split/config/kv/` と `experiments/2026-08-pd-split/config/.env` は `.gitignore` 済みのため、消し忘れてもコミットはされません。
 
 ---
 
@@ -438,40 +438,40 @@ rm -f <MAC_KV_DIR>/*.bin
 
 **一致していないと restore が失敗するか、出力が壊れます。**
 
-| 項目 | 不一致のときに起きること |
-| --- | --- |
-| **GGUF ファイル (sha256)** | **エラーにならず出力だけが壊れます。** seq state ファイルはモデルの同一性を照合しません |
-| **`-fa` (Flash Attention)** | `incompatible V transposition` で restore 失敗 |
-| **`--cache-type-k` / `-v`** | `mismatched key type` / `mismatched value type` で restore 失敗 |
-| llama.cpp のバージョン | ファイル形式が変わっていれば restore 失敗 |
-| `-c` (n_ctx) | Decode 側が Prefill 済みトークン数より小さいと restore 失敗 |
+| 項目                        | 不一致のときに起きること                                                                |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| **GGUF ファイル (sha256)**  | **エラーにならず出力だけが壊れます。** seq state ファイルはモデルの同一性を照合しません |
+| **`-fa` (Flash Attention)** | `incompatible V transposition` で restore 失敗                                          |
+| **`--cache-type-k` / `-v`** | `mismatched key type` / `mismatched value type` で restore 失敗                         |
+| llama.cpp のバージョン      | ファイル形式が変わっていれば restore 失敗                                               |
+| `-c` (n_ctx)                | Decode 側が Prefill 済みトークン数より小さいと restore 失敗                             |
 
 判定ロジックの根拠は [01-research.md](01-research.md) §3 にあります。
 
 ## 付録 B. うまくいかないとき
 
-| 症状 | 原因と対処 |
-| --- | --- |
-| restore が `incompatible V transposition` | `-fa` の実効値が不一致。**両側で `-fa on` を明示** (`auto` はバックエンドごとに解決される) |
-| restore が `mismatched key type` | `--cache-type-k` / `-v` が不一致 |
-| `residual` がプロンプト全長 | Decode リクエストの `id_slot` が restore 先と違う。プロンプトが完全一致していない |
-| 出力が意味不明 | **GGUF が両側で異なる可能性が高い。** sha256 を再確認 |
-| `Invalid action` (400) | llama-swap などの router 経由で叩いている。**素の llama-server を直接叩く** |
-| 転送が遅い | 単一 TCP フローの頭打ち。`CONNS=8` を使う。配信側が Range 非対応だと単一接続に退避する |
-| Mac 側でメモリ不足 | モデルと KV の合計がユニファイドメモリを圧迫。`--cache-type-*` を `q4_0` にするか `-c` を下げる |
-| GPU 側の VRAM 不足 | 他の推論サーバが常駐していないか確認。本 PoC では既存の llama-swap を一時停止しました |
+| 症状                                      | 原因と対処                                                                                      |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| restore が `incompatible V transposition` | `-fa` の実効値が不一致。**両側で `-fa on` を明示** (`auto` はバックエンドごとに解決される)      |
+| restore が `mismatched key type`          | `--cache-type-k` / `-v` が不一致                                                                |
+| `residual` がプロンプト全長               | Decode リクエストの `id_slot` が restore 先と違う。プロンプトが完全一致していない               |
+| 出力が意味不明                            | **GGUF が両側で異なる可能性が高い。** sha256 を再確認                                           |
+| `Invalid action` (400)                    | llama-swap などの router 経由で叩いている。**素の llama-server を直接叩く**                     |
+| 転送が遅い                                | 単一 TCP フローの頭打ち。`CONNS=8` を使う。配信側が Range 非対応だと単一接続に退避する          |
+| Mac 側でメモリ不足                        | モデルと KV の合計がユニファイドメモリを圧迫。`--cache-type-*` を `q4_0` にするか `-c` を下げる |
+| GPU 側の VRAM 不足                        | 他の推論サーバが常駐していないか確認。本 PoC では既存の llama-swap を一時停止しました           |
 
 ## 付録 C. 逆方向 (Mac で Prefill → GPU で Decode)
 
 参考用の構成です。**Mac 側は macOS のファイアウォールが着信を遮断するため、GPU 側が HTTP で取りに行く形にできません。** そのため `scp` で送り出す方式を用意しています。
 
 ```bash
-python3 scripts/pd/pd_run.py \
+python3 experiments/2026-08-pd-split/scripts/pd_run.py \
   --prefill-url http://127.0.0.1:18080 \
   --decode-url  http://<GPU_IP>:18080 \
   --transfer-mode scp-push \
   --prefill-kv-dir <MAC_KV_DIR> \
-  --push-dest "USER@<GPU_IP>:<GPU側のdeploy/pd/kvの絶対パス>" \
+  --push-dest "USER@<GPU_IP>:<GPU側のexperiments/2026-08-pd-split/config/kvの絶対パス>" \
   --tokens 4096 --n-predict 32 \
   --label "D-reverse" --model "..." --kv-type q8_0
 ```

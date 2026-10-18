@@ -2,7 +2,7 @@
 """llama-server に対する Needle In A Haystack ランナー。
 
 KV キャッシュ量子化が長文からの情報抽出能力を損なわないかを測る。
-データ生成は scripts/bench/data/needle/generate.py をそのまま使う
+データ生成は tools/bench/data/needle/generate.py をそのまま使う
 (ランタイム非依存のため)。
 
 採点は needle_id が応答に含まれるかの 2 値。主観が入らない。

@@ -7,10 +7,10 @@ CUDA 側で保存した KV キャッシュを Metal 側で restore できるか�
 
 ## 0. 役割分担
 
-| 実行者 | 作業 |
-| --- | --- |
-| 手動 (4080 / Ubuntu) | §2〜§4 (設定・起動・確認) |
-| 自動 (M1 / macOS) | §6 以降 (Prefill 指示・KV 取得・restore・Decode・計測) |
+| 実行者               | 作業                                                   |
+| -------------------- | ------------------------------------------------------ |
+| 手動 (4080 / Ubuntu) | §2〜§4 (設定・起動・確認)                              |
+| 自動 (M1 / macOS)    | §6 以降 (Prefill 指示・KV 取得・restore・Decode・計測) |
 
 M1 から 4080 の llama-server を HTTP で直接叩くため、**4080 側で起動さえしてもらえれば、以降の操作は M1 側から実行できます。**
 
@@ -29,19 +29,19 @@ CMake Error at ggml/src/ggml-cuda/CMakeLists.txt:268 (message):
 Docker を採用すると次の利点があります。
 
 - ホストに CUDA Toolkit (約 3GB) を入れずに済む
-- **ufw の設定変更が不要**。Docker の publish は iptables の `DOCKER` チェーンに入るため、`DEFAULT_INPUT_POLICY=DROP` のままでも LAN へ出せる ([deploy/llama/README.md](../../deploy/llama/README.md) と同じ理由)
+- **ufw の設定変更が不要**。Docker の publish は iptables の `DOCKER` チェーンに入るため、`DEFAULT_INPUT_POLICY=DROP` のままでも LAN へ出せる ([deploy/llama/README.md](../../../deploy/llama-swap/README.md) と同じ理由)
 - llama.cpp のタグを Dockerfile で固定でき、Decode 側とのバージョン一致を保証しやすい
 
 llama.cpp 公式の CUDA イメージ (`ghcr.io/ggml-org/llama.cpp:server-cuda-<build>`) も検討しましたが、**commit 単位のタグが b5343 世代までしか公開されておらず b10679 が存在しない**ため、自前ビルドを採用します。
 
-構成は [deploy/pd/](../../deploy/pd/) にあります。
+構成は [config/](../config/) にあります。
 
 ## 2. 設定 (4080 側)
 
 リポジトリを最新にしてから `.env` を作成します。
 
 ```bash
-cd <このリポジトリ>/deploy/pd
+cd <このリポジトリ>/experiments/2026-08-pd-split/config
 cp .env.example .env
 vi .env      # MODEL_DIR を自分の環境の絶対パスに書き換える
 ```
@@ -66,7 +66,7 @@ sha256sum Qwen3-4B-Instruct-2507-Q4_K_M.gguf
 ## 4. 起動 (4080 側)
 
 ```bash
-cd <このリポジトリ>/deploy/pd
+cd <このリポジトリ>/experiments/2026-08-pd-split/config
 docker compose up -d --build
 ```
 
@@ -74,10 +74,10 @@ docker compose up -d --build
 
 起動するサービスは 2 つです。
 
-| サービス | ポート | 役割 |
-| --- | --- | --- |
-| `llama-pd` | 18080 | Prefill 側の llama-server |
-| `kv-http` | 18081 | 保存された KV ファイルの配信 |
+| サービス   | ポート | 役割                         |
+| ---------- | ------ | ---------------------------- |
+| `llama-pd` | 18080  | Prefill 側の llama-server    |
+| `kv-http`  | 18081  | 保存された KV ファイルの配信 |
 
 既存の llama-swap (11435) / ccshim (11436-11438) / Ollama (11434) とはポートが衝突しません。
 
@@ -101,7 +101,7 @@ llama.cpp 公式の `.devops/cuda.Dockerfile` と同じく、リンカに未解�
 -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined
 ```
 
-この指定は [deploy/pd/Dockerfile](../../deploy/pd/Dockerfile) に入っています。
+この指定は [config/Dockerfile](../config/Dockerfile) に入っています。
 
 #### Web UI のダウンロード失敗は無視して構いません
 

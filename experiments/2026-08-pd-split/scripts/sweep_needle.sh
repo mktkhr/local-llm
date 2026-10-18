@@ -10,7 +10,7 @@ set -euo pipefail
 
 URL="$1"; MODEL="$2"; KVTYPE="$3"; BACKEND="$4"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OUT="$HERE/../../results/needle.jsonl"
+OUT="$HERE/../results/needle.jsonl"
 mkdir -p "$(dirname "$OUT")"
 
 echo "=== $MODEL / KV=$KVTYPE / $BACKEND ===" >&2

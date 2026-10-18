@@ -7,15 +7,15 @@
 
 ## 1. 環境
 
-| 項目 | 値 |
-| --- | --- |
-| マシン | Apple M1 / Unified Memory 16GB / macOS 26.5.2 |
-| llama.cpp | タグ `b10679` = commit `50f068ffffc3e0e4c9c2e4139281c6075224f429` |
-| ビルド | `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLAMA_CURL=ON` |
-| バックエンド | Metal (macOS 既定で ON) + BLAS (Accelerate) |
-| モデル | `unsloth/Qwen3-4B-Instruct-2507-GGUF` の `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` |
-| モデルサイズ | 2,497,281,120 B |
-| モデル sha256 | `3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597` |
+| 項目          | 値                                                                            |
+| ------------- | ----------------------------------------------------------------------------- |
+| マシン        | Apple M1 / Unified Memory 16GB / macOS 26.5.2                                 |
+| llama.cpp     | タグ `b10679` = commit `50f068ffffc3e0e4c9c2e4139281c6075224f429`             |
+| ビルド        | `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLAMA_CURL=ON`          |
+| バックエンド  | Metal (macOS 既定で ON) + BLAS (Accelerate)                                   |
+| モデル        | `unsloth/Qwen3-4B-Instruct-2507-GGUF` の `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` |
+| モデルサイズ  | 2,497,281,120 B                                                               |
+| モデル sha256 | `3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597`            |
 
 ビルドに必要で追加導入したもの: `cmake` 4.4.3 / `ninja` 1.13.2 / `iperf3` 3.21 (Homebrew)。
 
@@ -54,7 +54,7 @@ ggml_metal_library_compile_pipeline: compiling pipeline:
 
 ## 3. 検証手順
 
-再現スクリプトは Phase 3 で `scripts/pd/` に整理します。手順は以下のとおりです。
+再現スクリプトは Phase 3 で `experiments/2026-08-pd-split/scripts/` に整理します。手順は以下のとおりです。
 
 1. 2,026 トークンのプロンプトで `/completion` (`n_predict=1`) を実行し Prefill
 2. `POST /slots/0?action=save`
@@ -67,14 +67,14 @@ ggml_metal_library_compile_pipeline: compiling pipeline:
 
 ## 4. 結果
 
-| ステップ | wall | cache_n | prompt_n | prompt_ms | 備考 |
-| --- | --- | --- | --- | --- | --- |
-| 1. Prefill (cold) | 10,664 ms | 0 | 2,026 | 10,658 | |
-| 2. slot save | 141 ms | — | — | — | `n_saved=2026` / `n_written=158,742,060` (151.4 MiB) / `save_ms=139.4` |
-| 3. erase | — | — | — | — | `n_erased=2026` |
-| 4. **対照 (restore なし)** | 10,208 ms | **0** | **2,026** | 10,204 | 全量が再 Prefill される |
-| 5. restore | 30 ms | — | — | — | `n_restored=2026` / `n_read=158,742,060` / `restore_ms=29.0` |
-| 6. **restore 後 decode** | 2,053 ms | **2,025** | **1** | 61.4 | `predicted_n=32` / 15.6 tok/s |
+| ステップ                   | wall      | cache_n   | prompt_n  | prompt_ms | 備考                                                                   |
+| -------------------------- | --------- | --------- | --------- | --------- | ---------------------------------------------------------------------- |
+| 1. Prefill (cold)          | 10,664 ms | 0         | 2,026     | 10,658    |                                                                        |
+| 2. slot save               | 141 ms    | —         | —         | —         | `n_saved=2026` / `n_written=158,742,060` (151.4 MiB) / `save_ms=139.4` |
+| 3. erase                   | —         | —         | —         | —         | `n_erased=2026`                                                        |
+| 4. **対照 (restore なし)** | 10,208 ms | **0**     | **2,026** | 10,204    | 全量が再 Prefill される                                                |
+| 5. restore                 | 30 ms     | —         | —         | —         | `n_restored=2026` / `n_read=158,742,060` / `restore_ms=29.0`           |
+| 6. **restore 後 decode**   | 2,053 ms  | **2,025** | **1**     | 61.4      | `predicted_n=32` / 15.6 tok/s                                          |
 
 生成されたテキストも正常でした。
 
@@ -93,13 +93,13 @@ the repeated phrases? 3. How does the repetition affect the
 
 ## 5. 得られた基準値
 
-| 指標 | 実測値 |
-| --- | --- |
-| **M1 Prefill 速度** | **190 tok/s** (2,026 tok / 10,658 ms) |
-| **M1 Decode 速度** | **15.6 tok/s** |
-| **KV サイズ (q8_0)** | **78,352 B/token = 76.5 KiB/token** |
-| KV save 速度 | 151.4 MiB / 139.4 ms ≒ 1.09 GB/s |
-| KV restore 速度 | 151.4 MiB / 29.0 ms ≒ 5.2 GB/s (ページキャッシュ命中) |
+| 指標                 | 実測値                                                |
+| -------------------- | ----------------------------------------------------- |
+| **M1 Prefill 速度**  | **190 tok/s** (2,026 tok / 10,658 ms)                 |
+| **M1 Decode 速度**   | **15.6 tok/s**                                        |
+| **KV サイズ (q8_0)** | **78,352 B/token = 76.5 KiB/token**                   |
+| KV save 速度         | 151.4 MiB / 139.4 ms ≒ 1.09 GB/s                      |
+| KV restore 速度      | 151.4 MiB / 29.0 ms ≒ 5.2 GB/s (ページキャッシュ命中) |
 
 ### 5.1 KV サイズは計算と一致
 

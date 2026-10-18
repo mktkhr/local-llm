@@ -18,7 +18,7 @@ CONNS="${CONNS:-8}"
 MODEL="${MODEL:?MODEL を指定してください}"
 KVTYPE="${KVTYPE:-q8_0}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OUT="$HERE/../../results/pd_runs.jsonl"
+OUT="$HERE/../results/pd_runs.jsonl"
 mkdir -p "$(dirname "$OUT")"
 
 for t in "$@"; do

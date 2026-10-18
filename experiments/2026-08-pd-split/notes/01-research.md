@@ -63,24 +63,24 @@ Discussion #20572 の要約には「slot ファイルはハードウェア/バ�
 
 `src/llama-context.cpp:3238` `llama_context::state_seq_save_file`:
 
-| オフセット | 内容 |
-| --- | --- |
-| 0 | magic `GGSQ` (`LLAMA_STATE_SEQ_MAGIC`) |
-| 4 | version = `3` (`LLAMA_STATE_SEQ_VERSION`, `include/llama.h:49`) |
-| 8 | token 数 (u32) |
-| 12 | token 列 (`llama_token` × N) |
-| 以降 | KV キャッシュ本体 |
+| オフセット | 内容                                                            |
+| ---------- | --------------------------------------------------------------- |
+| 0          | magic `GGSQ` (`LLAMA_STATE_SEQ_MAGIC`)                          |
+| 4          | version = `3` (`LLAMA_STATE_SEQ_VERSION`, `include/llama.h:49`) |
+| 8          | token 数 (u32)                                                  |
+| 12         | token 列 (`llama_token` × N)                                    |
+| 以降       | KV キャッシュ本体                                               |
 
 ## 3. restore 側が照合する条件
 
 `src/llama-kv-cache.cpp:2533` `llama_kv_cache::state_read_data` が拒否する条件です。
 
-| 条件 | 失敗時のログ |
-| --- | --- |
-| `n_layer` 不一致 | `mismatched layer count` |
-| `cell_count > cells.size()` | `not enough cells in kv cache to restore state` |
-| `v_trans` 不一致 | `incompatible V transposition` |
-| 層ごとの `k_type` / `v_type` 不一致 | `mismatched key type` / `mismatched value type` |
+| 条件                                        | 失敗時のログ                                            |
+| ------------------------------------------- | ------------------------------------------------------- |
+| `n_layer` 不一致                            | `mismatched layer count`                                |
+| `cell_count > cells.size()`                 | `not enough cells in kv cache to restore state`         |
+| `v_trans` 不一致                            | `incompatible V transposition`                          |
+| 層ごとの `k_type` / `v_type` 不一致         | `mismatched key type` / `mismatched value type`         |
 | 層ごとの `k_size_row` / `v_size_row` 不一致 | `mismatched key row size` / `mismatched value row size` |
 
 ### 3.1 v_trans は Flash Attention 設定そのもの
@@ -142,16 +142,16 @@ OpenAI 互換エンドポイントでは `usage.prompt_tokens_details.cached_tok
 
 ## 5. 既知の問題と回避すべき構成
 
-| Issue | 内容 | 対応 |
-| --- | --- | --- |
+| Issue                                                        | 内容                                                                                             | 対応                                                                     |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
 | [#18703](https://github.com/ggml-org/llama.cpp/issues/18703) | multi-model router モード (`--models-preset`) は slot save/restore 非対応 (400 `Invalid action`) | **既存の llama-swap 経路は使わず、素の llama-server を別ポートで立てる** |
-| [#22373](https://github.com/ggml-org/llama.cpp/issues/22373) | router モードで `/slots` が利用できない | 同上 |
-| [#21133](https://github.com/ggml-org/llama.cpp/issues/21133) | `--mmproj` をロードすると全 slot が `has_mtmd=true` になり save/restore がブロックされる | VL モデルを使わない |
-| [#20473](https://github.com/ggml-org/llama.cpp/issues/20473) | GLM-5 で restore 時に `GGML_ASSERT(nread <= state_size)` 失敗 | 該当モデルを使わない |
-| [#21140](https://github.com/ggml-org/llama.cpp/issues/21140) | recurrent state restore のマルチ GPU ROCm クラッシュ | Mamba / hybrid 系を使わない |
-| [#21383](https://github.com/ggml-org/llama.cpp/issues/21383) | Qwen3.5-27B の CUDA illegal memory access (prompt cache) | 27B MoE を使わない |
-| [#23210](https://github.com/ggml-org/llama.cpp/issues/23210) | Qwen3.6-27B で llama-server がクラッシュ | 同上 |
-| [#22450](https://github.com/ggml-org/llama.cpp/issues/22450) | Qwen3.6-35B-A3B MoE で slot がハング | 同上 |
+| [#22373](https://github.com/ggml-org/llama.cpp/issues/22373) | router モードで `/slots` が利用できない                                                          | 同上                                                                     |
+| [#21133](https://github.com/ggml-org/llama.cpp/issues/21133) | `--mmproj` をロードすると全 slot が `has_mtmd=true` になり save/restore がブロックされる         | VL モデルを使わない                                                      |
+| [#20473](https://github.com/ggml-org/llama.cpp/issues/20473) | GLM-5 で restore 時に `GGML_ASSERT(nread <= state_size)` 失敗                                    | 該当モデルを使わない                                                     |
+| [#21140](https://github.com/ggml-org/llama.cpp/issues/21140) | recurrent state restore のマルチ GPU ROCm クラッシュ                                             | Mamba / hybrid 系を使わない                                              |
+| [#21383](https://github.com/ggml-org/llama.cpp/issues/21383) | Qwen3.5-27B の CUDA illegal memory access (prompt cache)                                         | 27B MoE を使わない                                                       |
+| [#23210](https://github.com/ggml-org/llama.cpp/issues/23210) | Qwen3.6-27B で llama-server がクラッシュ                                                         | 同上                                                                     |
+| [#22450](https://github.com/ggml-org/llama.cpp/issues/22450) | Qwen3.6-35B-A3B MoE で slot がハング                                                             | 同上                                                                     |
 
 **Qwen3-4B (dense) に該当する既知の regression は見つかりませんでした。** 報告は MoE / hybrid / VL / SWA 系に集中しています。
 
@@ -179,19 +179,19 @@ OpenAI 互換エンドポイントでは `usage.prompt_tokens_details.cached_tok
 
 1 トークンあたりのバイト数 = `36 層 × 2 (K,V) × ggml_row_size(type, 1024)`
 
-| KV 型 | row_size | 1 token あたり |
-| --- | --- | --- |
-| f16 | 2,048 B | 147,456 B = **144 KiB** |
-| q8_0 | 1,088 B | 78,336 B = **76.5 KiB** |
-| q4_0 | 576 B | 41,472 B = **40.5 KiB** |
+| KV 型 | row_size | 1 token あたり          |
+| ----- | -------- | ----------------------- |
+| f16   | 2,048 B  | 147,456 B = **144 KiB** |
+| q8_0  | 1,088 B  | 78,336 B = **76.5 KiB** |
+| q4_0  | 576 B    | 41,472 B = **40.5 KiB** |
 
-| tokens | f16 | q8_0 | q4_0 |
-| --- | --- | --- | --- |
-| 1k | 144 MiB | 76.5 MiB | 40.5 MiB |
-| 2k | 288 MiB | 153 MiB | 81 MiB |
-| 4k | 576 MiB | 306 MiB | 162 MiB |
-| 8k | 1.13 GiB | 612 MiB | 324 MiB |
-| 16k | 2.25 GiB | 1.20 GiB | 648 MiB |
+| tokens | f16      | q8_0     | q4_0     |
+| ------ | -------- | -------- | -------- |
+| 1k     | 144 MiB  | 76.5 MiB | 40.5 MiB |
+| 2k     | 288 MiB  | 153 MiB  | 81 MiB   |
+| 4k     | 576 MiB  | 306 MiB  | 162 MiB  |
+| 8k     | 1.13 GiB | 612 MiB  | 324 MiB  |
+| 16k    | 2.25 GiB | 1.20 GiB | 648 MiB  |
 
 **KV 量子化が転送時間を直接半減・4分の1にする最大のレバーです。** ただし型は照合されるため両機で一致させます。q8_0 の V は Flash Attention が必須であり、§3.1 の `-fa on` と整合します。
 
@@ -213,17 +213,17 @@ OpenAI 互換エンドポイントでは `usage.prompt_tokens_details.cached_tok
 
 ## 9. 推奨構成
 
-| 項目 | 値 | 理由 |
-| --- | --- | --- |
-| モデル | Qwen3-4B-Instruct-2507 Q4_K_M GGUF (両機で同一ファイル / sha256 一致) | §6。M1 16GB に余裕がある |
-| commit | タグ `b10679` を両機で固定 | 調査時点の最新タグ。既存 llama-swap の b10438 とは別に立てる |
-| KV 型 | `--cache-type-k q8_0 --cache-type-v q8_0` | 転送量を f16 の 53% に削減。比較軸として f16 も測る |
-| Flash Attention | **`-fa on` を両機で明示** (`auto` は禁止) | §3.1。不一致で restore が確実に失敗する |
-| CUDA ビルド | `cmake -B build -DGGML_CUDA=ON -DCMAKE_BUILD_TYPE=Release` | |
-| Metal ビルド | `cmake -B build -DCMAKE_BUILD_TYPE=Release` (Metal は macOS 既定で ON) | |
-| server 共通 | `--slot-save-path <dir> --slots -np 1 --no-context-shift -ngl 99 -c <n_ctx>` | router モードと context shift を排除する |
-| 4080 側 | 既存 llama-swap (:11435) は変更せず、別ポートで素の llama-server を起動 | §5 #18703 |
-| 検証指標 | `/completion` の `timings.cache_n` / `timings.prompt_n` | §4.2 |
+| 項目            | 値                                                                           | 理由                                                         |
+| --------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| モデル          | Qwen3-4B-Instruct-2507 Q4_K_M GGUF (両機で同一ファイル / sha256 一致)        | §6。M1 16GB に余裕がある                                     |
+| commit          | タグ `b10679` を両機で固定                                                   | 調査時点の最新タグ。既存 llama-swap の b10438 とは別に立てる |
+| KV 型           | `--cache-type-k q8_0 --cache-type-v q8_0`                                    | 転送量を f16 の 53% に削減。比較軸として f16 も測る          |
+| Flash Attention | **`-fa on` を両機で明示** (`auto` は禁止)                                    | §3.1。不一致で restore が確実に失敗する                      |
+| CUDA ビルド     | `cmake -B build -DGGML_CUDA=ON -DCMAKE_BUILD_TYPE=Release`                   |                                                              |
+| Metal ビルド    | `cmake -B build -DCMAKE_BUILD_TYPE=Release` (Metal は macOS 既定で ON)       |                                                              |
+| server 共通     | `--slot-save-path <dir> --slots -np 1 --no-context-shift -ngl 99 -c <n_ctx>` | router モードと context shift を排除する                     |
+| 4080 側         | 既存 llama-swap (:11435) は変更せず、別ポートで素の llama-server を起動      | §5 #18703                                                    |
+| 検証指標        | `/completion` の `timings.cache_n` / `timings.prompt_n`                      | §4.2                                                         |
 
 ## 10. 未確定事項 (実測で解消する)
 
@@ -234,12 +234,12 @@ OpenAI 互換エンドポイントでは `usage.prompt_tokens_details.cached_tok
 
 ## 11. PoC の段階
 
-| Phase | 内容 | 完了条件 |
-| --- | --- | --- |
-| 0 | 調査 (本ドキュメント) | 完了 |
-| 1 | M1 単体で save → restore を成立させる | `cache_n` により再 Prefill なしを確認 |
-| 2 | 4080 (CUDA) → M1 (Metal) のクロスバックエンド疎通 | 同上。PD分離の成立判定 |
-| 3 | スクリプト化とベンチマーク (A/B/C/D × 1k〜16k) | break-even 点の算出、10GbE 推定値 |
+| Phase | 内容                                              | 完了条件                              |
+| ----- | ------------------------------------------------- | ------------------------------------- |
+| 0     | 調査 (本ドキュメント)                             | 完了                                  |
+| 1     | M1 単体で save → restore を成立させる             | `cache_n` により再 Prefill なしを確認 |
+| 2     | 4080 (CUDA) → M1 (Metal) のクロスバックエンド疎通 | 同上。PD分離の成立判定                |
+| 3     | スクリプト化とベンチマーク (A/B/C/D × 1k〜16k)    | break-even 点の算出、10GbE 推定値     |
 
 ## 参考
 

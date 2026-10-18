@@ -13,7 +13,7 @@ import json
 import pathlib
 import sys
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
 
 # 実効スループットの仮定値。Wi-Fi のみ実測、他は推定。

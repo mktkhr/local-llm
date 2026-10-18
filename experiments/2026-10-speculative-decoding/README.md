@@ -4,13 +4,13 @@ RTX 4080 SUPER (16 GB) 上の Qwen3.6-35B-A3B に対して、MTP ヘッド / n-g
 
 **計測中(Phase 0 完了、Phase 1 準備中)。設計は [notes/00-plan.md](notes/00-plan.md)。**
 
-| 項目       | 値                                                                        |
-| ---------- | ------------------------------------------------------------------------- |
-| 期間       | YYYY-MM-DD 〜 YYYY-MM-DD                                                  |
-| 機材       | GPU / CPU / RAM / OS / Driver                                             |
-| ランタイム | llama.cpp bNNNN(commit)/ Ollama vX.Y / mlx-lm X.Y                         |
-| 方法論     | [docs/evaluation.md](../../docs/evaluation.md) との差分があればここに書く |
-| 関連実験   | [experiments/...](../)                                                    |
+| 項目       | 値                                                                                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 期間       | YYYY-MM-DD 〜 YYYY-MM-DD                                                                                                                                      |
+| 機材       | GPU / CPU / RAM / OS / Driver。**GPU は電力制限 220 W**(既定 320 W、`nvidia-smi -pl`)で計測。全 spec 同条件なので比には影響しないが、絶対値は無制限時と異なる |
+| ランタイム | llama.cpp bNNNN(commit)/ Ollama vX.Y / mlx-lm X.Y                                                                                                             |
+| 方法論     | [docs/evaluation.md](../../docs/evaluation.md) との差分があればここに書く                                                                                     |
+| 関連実験   | [experiments/...](../)                                                                                                                                        |
 
 ## 結論
 
@@ -66,7 +66,7 @@ RTX 4080 SUPER (16 GB) 上の Qwen3.6-35B-A3B に対して、MTP ヘッド / n-g
 - **n-gram はコード書き換えだけ強烈に効く。** W2-03(Write で 100k 中の長いブロックを書き出す)で ngram-simple **2.10 倍**、ngram-mod 1.91 倍。一方 W2-01 では 0.69 倍。発火しない W3/W4 では無害(0.99)。MTP と併用すると MTP の draft を n-gram が邪魔して W1 で悪化
 - **MTP の VRAM コスト**: 重み +1,592 MiB(IQ3_S)に加え、起動後の draft context で **+830〜890 MiB**(none 15,024 → mtp 15,854〜15,918 MiB)。合計約 2.4 GB。16 GB では IQ3_S → IQ3_XXS への格下げと mtp3 の断念を強いた
 - **出力は保存されない。** mtp の生成物一致率 0〜0.67(同じプロンプト・greedy でも baseline と別のトークン列)。n-gram で draft が出なかった行だけ 1.0。tool_use が壊れるかは Phase 2 で見る
-- **電力**: C' で mtp は none より平均電力が低い(146〜215 W vs 179〜217 W)のに速い。tok/s/W で見ると差はさらに広がる
+- **電力**: C' で mtp は none より平均電力が低い(146〜215 W vs 179〜217 W)のに速い。tok/s/W で見ると差はさらに広がる。なお GPU は **220 W 制限下**で、C' は prefill 中に上限に張り付く(max 223〜226 W)。B' は CPU 律速で 106〜115 W と上限に届かない
 - **W1/W2 の prefill は cold。** 3 本のプロンプトは別セッション由来で共通 prefix が無く、`-np 1` では直前のプロンプトの KV しか残らないため、W1 を warm で測る設計は成立しなかった(cached_n が付いたのは primer 直後に同一プロンプトが来た 1 件のみ)。warm prefix の挙動は Phase 2 の実セッションで `cache_n` を見る
 
 ## 落とし穴

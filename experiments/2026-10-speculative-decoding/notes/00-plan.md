@@ -45,6 +45,7 @@
 | 共通フラグ   | `-np 1 -fa on --jinja --no-mmproj -ctk q8_0 -ctv q8_0 -b 2048 -ub 512 --cache-reuse 256 --metrics`                                                 | 採用構成と同一。MTP は `-np > 1` と `--mmproj` に非対応                                                                                                                                                |
 | サンプリング | `--temp 0`(greedy)、`think: false`、`n_predict` 固定(W4 のみ think on)                                                                             | 出力長・ばらつきの交絡を消す                                                                                                                                                                           |
 | ctx          | 131072(Phase 3 のみ 262144)                                                                                                                        | 採用構成と同一                                                                                                                                                                                         |
+| GPU 電力制限 | **220 W**(`nvidia-smi -pl 220`。既定 320 W)                                                                                                        | 利用者の常用設定。全 spec 同条件なので対比較には影響しない。電力リミット自体の影響は別実験で掃引する                                                                                                   |
 
 ### 動かすもの
 

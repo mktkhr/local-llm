@@ -4,7 +4,7 @@ use_default_settings: true
 
 server:
   # 生成値。使い回さないこと
-  secret_key: "CHANGE_ME"  # openssl rand -hex 32 で生成し settings.yml に置く(gitignore)
+  secret_key: "CHANGE_ME" # openssl rand -hex 32 で生成し settings.yml に置く(gitignore)
   # limiter を有効にすると Open WebUI の連続クエリが bot 判定で 429 になる。
   # このインスタンスは webui ネットワーク内からしか到達できないので無効で問題ない
   limiter: false

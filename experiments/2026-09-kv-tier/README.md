@@ -15,7 +15,7 @@ llama.cpp の prompt cache(`--cache-ram` / slot save)を使い、VRAM から溢�
 1. **200,000 tokens で、full prefill 141.6 秒が DRAM から 1.6 秒 (89.6x) / SSD から 20.2 秒 (7.0x) になりました。** 本 PoC の主目的である「長 context セッションの再開」は成立します (H3 成立)。
 2. **DRAM tier は全長・全 KV 型で再 Prefill より速い (H1 成立)。** 損益分岐は存在しません。
 3. **SSD tier (SATA) の損益分岐は KV 量子化で 1 桁動きます (H5 成立)。** f16 で約 10 万、q8_0 で 43,429、q4_0 で 10,633 tokens。**KV 量子化が SSD tier 成立の主レバー**であることが実測で確定しました。
-4. **事前予測 ([01-research.md](01-research.md) §5) は q8_0 で誤差 6%、q4_0 で 11%** でした。1k〜16k のデータから 200k までの外挿が成立しています。
+4. **事前予測 ([01-research.md](notes/01-research.md) §5) は q8_0 で誤差 6%、q4_0 で 11%** でした。1k〜16k のデータから 200k までの外挿が成立しています。
 5. **階層には帯域だけでなく容量の壁があります。** DRAM に載り切らないサイズになった瞬間、実測値が SSD 速度へ落ちました (§6.1)。単純な「速度表」では設計できません。
 
 詳細は [notes/03-results.md](notes/03-results.md)。調査は [notes/01-research.md](notes/01-research.md)、設計は [notes/02-design.md](notes/02-design.md)。

@@ -22,6 +22,9 @@ import subprocess
 import urllib.request
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
+# 素材にするリポジトリ本体(experiments/<実験>/scripts/ から 3 つ上)。
+# 2026-09 の計測時は旧構成(docs/ scripts/ deploy/)を素材にしており、再生成すると内容は変わる。
+SRC_ROOT = REPO.parents[1]
 
 SYSTEM_PROMPT = """You are a coding agent working inside a local repository.
 
@@ -50,10 +53,10 @@ def tokenize(base_url: str, text: str) -> int:
 def source_blocks() -> list[str]:
     """リポジトリの実ファイルを read_file のツール出力風に整形する。"""
     out = []
-    patterns = ["docs/**/*.md", "scripts/**/*.py", "scripts/**/*.sh", "deploy/**/*.yml", "README.md"]
+    patterns = ["docs/**/*.md", "experiments/**/*.md", "tools/**/*.py", "tools/**/*.sh", "deploy/**/*.yml", "README.md"]
     seen = set()
     for pat in patterns:
-        for p in sorted(REPO.glob(pat)):
+        for p in sorted(SRC_ROOT.glob(pat)):
             if ".venv" in p.parts or p in seen:
                 continue
             seen.add(p)
@@ -61,7 +64,7 @@ def source_blocks() -> list[str]:
                 body = p.read_text(encoding="utf-8")
             except (UnicodeDecodeError, OSError):
                 continue
-            rel = p.relative_to(REPO)
+            rel = p.relative_to(SRC_ROOT)
             out.append(f"<tool_result tool=read_file path={rel}>\n{body}\n</tool_result>\n")
     return out
 
@@ -77,7 +80,7 @@ def tool_output_blocks() -> list[str]:
     out = []
     for cmd in cmds:
         try:
-            r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=30)
+            r = subprocess.run(cmd, cwd=SRC_ROOT, capture_output=True, text=True, timeout=30)
             out.append(f"<tool_result tool=run cmd={' '.join(cmd)!r}>\n{r.stdout}\n</tool_result>\n")
         except (OSError, subprocess.SubprocessError):
             continue

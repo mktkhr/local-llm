@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """階層型 KV キャッシュの Case A〜E を計測する。
 
-Case 定義 (docs/kv-tier/02-design.md §2):
+Case 定義 (notes/02-design.md §2):
 
     A  cache なし        未見の prompt を投入 -> full prefill
     B  VRAM hit          同一 prompt を連続投入 -> prefill skip

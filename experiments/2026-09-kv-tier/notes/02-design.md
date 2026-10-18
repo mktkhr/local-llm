@@ -217,7 +217,7 @@ synthetic な繰り返し文字列では、prefix 共有と圧縮率が実運用
 | 3-c   | Case A / B / C を q8_0 で計測                                                                                                                | **H1 の判定**                                                       |
 | 4     | Case D (drop_caches あり/なし)、Case D' を追加                                                                                               | **H2 / H3 の判定**                                                  |
 | 5     | KV 型 3 種 × context 長の掃引、Case E                                                                                                        | **H5 の判定**、損益分岐表の完成                                     |
-| 6     | 結果を `docs/kv-tier/03-results.md` にまとめ、Track 1 の要否を判断                                                                           | Track 1 へ進むかの意思決定                                          |
+| 6     | 結果を `notes/03-results.md` にまとめ、Track 1 の要否を判断                                                                                  | Track 1 へ進むかの意思決定                                          |
 | 7     | (条件付き) Track 1: SGLang HiCache                                                                                                           | page 単位 hit と write policy の比較                                |
 
 ## 9. 成果物の予定
@@ -231,4 +231,4 @@ synthetic な繰り返し文字列では、prefix 共有と圧縮率が実運用
 | `scripts/aggregate.py`                                | CSV 出力と損益分岐の算出               |
 | `results/kvtier_runs.jsonl`                           | 生データ                               |
 | `results/kvtier.csv` / `results/kvtier_breakeven.csv` | 集計                                   |
-| `docs/kv-tier/03-results.md`                          | 実測結果                               |
+| `notes/03-results.md`                                 | 実測結果                               |

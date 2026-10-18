@@ -10,3 +10,7 @@ AGENTS.md
 
 # デザインバイナリ(prettier対象外だが念のため明示)
 design/**/*.pen
+
+# 実験の計測データ・結果(機械生成、整形しない)
+experiments/**/data/
+experiments/**/results/

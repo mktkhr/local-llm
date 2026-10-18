@@ -4,7 +4,8 @@ import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from spec_bench import extract_text, extract_timings, metrics_delta, parse_metrics  # noqa: E402
+from spec_bench import (block_types, extract_text, extract_timings, generated_payload, metrics_delta,  # noqa: E402
+                        parse_metrics)
 
 METRICS = """# HELP llamacpp:tokens_predicted_total x
 llamacpp:tokens_predicted_total 100
@@ -70,6 +71,31 @@ class Text(unittest.TestCase):
 
     def test_chat(self):
         self.assertEqual(extract_text({"choices": [{"message": {"content": "hi"}}]}), "hi")
+
+
+class Payload(unittest.TestCase):
+    def test_messages_hash_covers_tool_use_not_ids(self):
+        a = {"id": "msg_1", "stop_reason": "tool_use",
+             "content": [{"type": "tool_use", "id": "toolu_1", "name": "Edit", "input": {"file_path": "a", "new_string": "x"}}]}
+        b = {"id": "msg_2", "stop_reason": "tool_use",
+             "content": [{"type": "tool_use", "id": "toolu_9", "name": "Edit", "input": {"file_path": "a", "new_string": "x"}}]}
+        c = {"id": "msg_3", "stop_reason": "tool_use",
+             "content": [{"type": "tool_use", "id": "toolu_9", "name": "Edit", "input": {"file_path": "a", "new_string": "y"}}]}
+        self.assertEqual(generated_payload(a), generated_payload(b))
+        self.assertNotEqual(generated_payload(a), generated_payload(c))
+        self.assertNotEqual(generated_payload(a), "")
+
+    def test_chat_hash_covers_reasoning_and_tool_calls(self):
+        a = {"choices": [{"message": {"content": None, "reasoning_content": "think", "tool_calls": [{"function": {"name": "f", "arguments": "{}"}}]}}]}
+        b = {"choices": [{"message": {"content": None, "reasoning_content": "other", "tool_calls": [{"function": {"name": "f", "arguments": "{}"}}]}}]}
+        self.assertNotEqual(generated_payload(a), generated_payload(b))
+        self.assertNotEqual(generated_payload(a), "")
+
+    def test_block_types(self):
+        self.assertEqual(block_types({"content": [{"type": "thinking"}, {"type": "text"}, {"type": "tool_use"}]}),
+                         ["thinking", "text", "tool_use"])
+        self.assertEqual(block_types({"choices": [{"message": {"content": "x", "tool_calls": [1]}, "finish_reason": "stop"}]}),
+                         ["text", "tool_calls"])
 
 
 if __name__ == "__main__":

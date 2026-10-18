@@ -20,7 +20,23 @@ class _Fake(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
+    fail_metrics_once = False
+
     def do_GET(self):
+        if self.path == "/props":
+            body = json.dumps({"build_info": "b10920-eafe15a5e"}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == "/metrics" and _Fake.fail_metrics_once:
+            _Fake.fail_metrics_once = False
+            self.send_response(500)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         if self.path == "/metrics":
             _Fake.calls += 1
             n = 100 + 20 * _Fake.calls
@@ -40,7 +56,7 @@ class _Fake(http.server.BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length", "0"))
         req = json.loads(self.rfile.read(n))
         assert req["max_tokens"] == 64 and req["temperature"] == 0
-        body = json.dumps({"choices": [{"message": {"content": "hello"}}],
+        body = json.dumps({"choices": [{"message": {"content": "hello"}, "finish_reason": "stop"}],
                            "timings": {"prompt_n": 5, "prompt_ms": 1.0, "cache_n": 100, "predicted_n": 20,
                                        "predicted_ms": 200.0, "predicted_per_second": 100.0}}).encode()
         self.send_response(200)
@@ -87,6 +103,22 @@ class CliRun(unittest.TestCase):
             self.assertEqual(row["workload"], "W3")
             self.assertEqual(row["config"], "C")
             self.assertIsNone(row["gpu"]["vram_peak_mib"])
+            self.assertEqual(row["build"], "b10920-eafe15a5e")
+            self.assertEqual(row["stop_reason"], "stop")
+            self.assertEqual(row["block_types"], ["text"])
+            self.assertTrue(row["payload_sha256"])
+
+    def test_metrics_fetch_failure_blanks_metrics(self):
+        with tempfile.TemporaryDirectory() as d:
+            prompt = pathlib.Path(d, "p.json")
+            prompt.write_text(json.dumps({"messages": [{"role": "user", "content": "hi"}]}))
+            out = pathlib.Path(d, "out.jsonl")
+            _Fake.fail_metrics_once = True
+            self.assertNotEqual(self._run(f"http://127.0.0.1:{self.port}", out, prompt), 0)
+            row = json.loads(out.read_text().splitlines()[0])
+            self.assertEqual(row["status"], 200)
+            self.assertIsNone(row["metrics"])
+            self.assertIn("metrics", row["error"])
 
     def test_connection_refused_is_recorded(self):
         with tempfile.TemporaryDirectory() as d:
@@ -108,6 +140,7 @@ class BuildBody(unittest.TestCase):
         self.assertEqual(b["temperature"], 0)
         self.assertEqual(b["thinking"], {"type": "disabled"})
         self.assertEqual(b["system"], "s")
+        self.assertFalse(b["chat_template_kwargs"]["enable_thinking"])
 
     def test_chat_think(self):
         b = build_body("chat", {"messages": [{"role": "user", "content": "q"}]}, 300, True)

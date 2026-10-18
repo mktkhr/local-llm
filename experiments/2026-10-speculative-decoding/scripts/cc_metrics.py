@@ -72,19 +72,29 @@ def cache_n_in_resp(raw: bytes) -> int | None:
     return None
 
 
-def session_stats(logdir: pathlib.Path, idx_from: int, idx_to: int) -> dict:
-    """trace.jsonl の idx が [idx_from, idx_to] の /v1/messages リクエストを集計する。"""
+def session_stats(logdir: pathlib.Path, idx_from: int | None = None, idx_to: int | None = None,
+                  line_from: int | None = None, line_to: int | None = None) -> dict:
+    """trace.jsonl の範囲内の /v1/messages リクエストを集計する。
+
+    範囲は idx([idx_from, idx_to])か、trace.jsonl の 1 始まりの行番号([line_from, line_to])で指定する。
+    ccshim は再起動すると idx を 1 から振り直す(NNN-resp.bin も上書きされる)ため、
+    セッションをまたぐ集計には行番号を使い、resp.bin は実行直後に退避しておくこと(cc_task.sh が行う)。
+    """
     stats = {"requests": 0, "tool_use_total": 0, "json_broken": 0, "raw_token_leak": 0,
              "cache_n_list": [], "wall_s_sum": 0.0}
     trace_path = logdir / "trace.jsonl"
     if not trace_path.exists():
         return stats
-    for line in trace_path.read_text().splitlines():
+    for lineno, line in enumerate(trace_path.read_text().splitlines(), 1):
         if not line.strip():
+            continue
+        if line_from is not None and line_to is not None and not (line_from <= lineno <= line_to):
             continue
         rec = json.loads(line)
         idx = rec.get("idx")
-        if idx is None or not (idx_from <= idx <= idx_to):
+        if idx is None:
+            continue
+        if idx_from is not None and idx_to is not None and not (idx_from <= idx <= idx_to):
             continue
         if not str(rec.get("path", "")).startswith("/v1/messages"):
             continue
@@ -111,14 +121,19 @@ def session_stats(logdir: pathlib.Path, idx_from: int, idx_to: int) -> dict:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--logdir", type=pathlib.Path, required=True)
-    ap.add_argument("--from", dest="idx_from", type=int, required=True)
-    ap.add_argument("--to", dest="idx_to", type=int, required=True)
+    ap.add_argument("--from", dest="idx_from", type=int, help="idx の下限(ccshim を再起動していないとき)")
+    ap.add_argument("--to", dest="idx_to", type=int)
+    ap.add_argument("--line-from", type=int, help="trace.jsonl の行番号の下限(1 始まり)。再起動をまたぐときはこちら")
+    ap.add_argument("--line-to", type=int)
     ap.add_argument("--metrics-before", type=pathlib.Path)
     ap.add_argument("--metrics-after", type=pathlib.Path)
     ap.add_argument("--out", type=pathlib.Path)
     args = ap.parse_args(argv)
 
-    result = {"session": session_stats(args.logdir, args.idx_from, args.idx_to), "metrics": None}
+    if (args.idx_from is None or args.idx_to is None) and (args.line_from is None or args.line_to is None):
+        ap.error("--from/--to か --line-from/--line-to のどちらかを指定してください")
+    result = {"session": session_stats(args.logdir, args.idx_from, args.idx_to, args.line_from, args.line_to),
+              "metrics": None}
     if args.metrics_before and args.metrics_after and args.metrics_before.exists() and args.metrics_after.exists():
         result["metrics"] = metrics_delta(parse_metrics(args.metrics_before.read_text()),
                                           parse_metrics(args.metrics_after.read_text()))
@@ -127,6 +142,9 @@ def main(argv: list[str] | None = None) -> int:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(text + "\n")
     print(text)
+    if result["session"]["requests"] == 0:
+        print("警告: 範囲内に /v1/messages のリクエストがありません(範囲の指定ミスか ccshim の再起動)", file=sys.stderr)
+        return 1
     return 0
 
 

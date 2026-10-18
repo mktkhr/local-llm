@@ -37,15 +37,25 @@ def _sd(xs: list) -> float | str:
 
 
 def _pair_key(r: dict) -> tuple:
-    return (r.get("block"), r.get("config"), r.get("workload"), r.get("prompt_id"))
+    # sweep(= 元ファイル名)を含める。ブロック番号は掃引ごとに 1 から振り直されるため、
+    # スモークと本番、やり直し前後の行が同じ block として対になってしまうのを防ぐ
+    return (r.get("sweep"), r.get("block"), r.get("config"), r.get("workload"), r.get("prompt_id"))
+
+
+def _sha(r: dict) -> str | None:
+    # 生成物全体のハッシュ(tool_use / thinking を含む)。無い古い行は text だけのハッシュに落ちる
+    return r.get("payload_sha256") or r.get("text_sha256")
 
 
 def summarize(rows: list[dict]) -> list[dict]:
     """(config, spec, workload) ごとの要約。status != 200 は errors に数えて除外する。"""
-    ok = [r for r in rows if r.get("status") == 200]
+    def _valid(r: dict) -> bool:
+        return r.get("status") == 200 and isinstance(r.get("metrics"), dict)
+
+    ok = [r for r in rows if _valid(r)]
     errors: dict[tuple, int] = defaultdict(int)
     for r in rows:
-        if r.get("status") != 200:
+        if not _valid(r):
             errors[(r.get("config"), r.get("spec"), r.get("workload"))] += 1
 
     baseline = {_pair_key(r): r for r in ok if r.get("spec") == "none"}
@@ -66,7 +76,7 @@ def summarize(rows: list[dict]) -> list[dict]:
             rt = (r.get("metrics") or {}).get("decode_tok_s")
             if bt and rt:
                 ratios.append(rt / bt)
-            matches.append(1.0 if r.get("text_sha256") == b.get("text_sha256") else 0.0)
+            matches.append(1.0 if _sha(r) == _sha(b) else 0.0)
         out.append({
             "config": key[0], "spec": key[1], "workload": key[2], "n": len(g),
             "decode_tok_s_mean": _mean([x.get("decode_tok_s") for x in m]),
@@ -105,13 +115,43 @@ def per_pos(rows: list[dict]) -> list[dict]:
     return out
 
 
-def load_rows(raw_dir: pathlib.Path) -> list[dict]:
+def load_rows(raw_dir: pathlib.Path, files: list[pathlib.Path] | None = None) -> list[dict]:
+    """sweep-*.jsonl を読む。各行に sweep(ファイル名)を付けて掃引をまたいだ対付けを防ぐ。"""
     rows = []
-    for p in sorted(raw_dir.glob("sweep-*.jsonl")):
+    for p in (files or sorted(raw_dir.glob("sweep-*.jsonl"))):
         for line in p.read_text().splitlines():
             if line.strip():
-                rows.append(json.loads(line))
+                r = json.loads(line)
+                r.setdefault("sweep", p.stem)
+                rows.append(r)
     return rows
+
+
+CC_COLUMNS = ["task", "label", "pass", "wall_s", "exit_code", "num_turns", "changed_files", "requests",
+              "tool_use_total", "json_broken", "raw_token_leak", "cache_n_mean", "acceptance", "draft_n", "predicted_n"]
+
+
+def summarize_cc(summaries: list[dict]) -> list[dict]:
+    """cc_task.sh の summary.json 群を 1 課題 1 行にする(results/claude_code.csv)。"""
+    out = []
+    for sm in summaries:
+        cc = sm.get("cc_metrics") or {}
+        sess = cc.get("session") or {}
+        met = cc.get("metrics") or {}
+        cache = [c for c in sess.get("cache_n_list") or [] if c is not None]
+        out.append({
+            "task": sm.get("task"), "label": sm.get("label"), "pass": 1 if sm.get("pass") else 0,
+            "wall_s": sm.get("wall_s"), "exit_code": sm.get("exit_code"), "num_turns": sm.get("num_turns"),
+            "changed_files": sm.get("changed_files"), "requests": sess.get("requests"),
+            "tool_use_total": sess.get("tool_use_total"), "json_broken": sess.get("json_broken"),
+            "raw_token_leak": sess.get("raw_token_leak"), "cache_n_mean": _mean(cache),
+            "acceptance": met.get("acceptance"), "draft_n": met.get("draft_n"), "predicted_n": met.get("predicted_n"),
+        })
+    return sorted(out, key=lambda r: (str(r["task"]), str(r["label"])))
+
+
+def load_cc_summaries(cc_dir: pathlib.Path) -> list[dict]:
+    return [json.loads(p.read_text()) for p in sorted(cc_dir.glob("*/summary.json"))]
 
 
 def _write_csv(path: pathlib.Path, rows: list[dict], columns: list[str] | None = None) -> None:
@@ -131,16 +171,28 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--raw", type=pathlib.Path, default=ROOT / "results" / "raw")
     ap.add_argument("--out", type=pathlib.Path, default=ROOT / "results" / "spec_sweep.csv")
     ap.add_argument("--per-pos", type=pathlib.Path, default=ROOT / "results" / "spec_accept_per_pos.csv")
+    ap.add_argument("--files", type=pathlib.Path, nargs="*", help="集計対象の sweep-*.jsonl を限定する")
+    ap.add_argument("--cc", type=pathlib.Path, default=ROOT / "results" / "raw" / "cc",
+                    help="cc_task.sh の出力ディレクトリ(summary.json があれば claude_code.csv も作る)")
+    ap.add_argument("--cc-out", type=pathlib.Path, default=ROOT / "results" / "claude_code.csv")
     args = ap.parse_args(argv)
 
-    rows = load_rows(args.raw)
-    if not rows:
-        print(f"{args.raw} に sweep-*.jsonl がありません")
+    rows = load_rows(args.raw, args.files)
+    wrote = []
+    if rows:
+        summary = summarize(rows)
+        _write_csv(args.out, summary, COLUMNS)
+        _write_csv(args.per_pos, per_pos(rows))
+        wrote.append(f"{args.out} ({len(summary)} rows), {args.per_pos}")
+    if args.cc.exists():
+        cc = load_cc_summaries(args.cc)
+        if cc:
+            _write_csv(args.cc_out, summarize_cc(cc), CC_COLUMNS)
+            wrote.append(f"{args.cc_out} ({len(cc)} rows)")
+    if not wrote:
+        print(f"{args.raw} に sweep-*.jsonl も、{args.cc} に summary.json もありません")
         return 1
-    summary = summarize(rows)
-    _write_csv(args.out, summary, COLUMNS)
-    _write_csv(args.per_pos, per_pos(rows))
-    print(f"wrote {args.out} ({len(summary)} rows) / {args.per_pos}")
+    print("wrote " + " / ".join(wrote))
     return 0
 
 

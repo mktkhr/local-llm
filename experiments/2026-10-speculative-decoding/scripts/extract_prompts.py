@@ -53,7 +53,7 @@ def tool_uses_in_resp(raw: bytes) -> list[dict]:
             continue
         t = ev.get("type")
         if t == "content_block_start" and (ev.get("content_block") or {}).get("type") == "tool_use":
-            blocks[ev["index"]] = {"name": ev["content_block"].get("name", ""), "parts": []}
+            blocks[ev.get("index", 0)] = {"name": ev["content_block"].get("name", ""), "parts": []}
         elif t == "content_block_delta" and (ev.get("delta") or {}).get("type") == "input_json_delta":
             if ev.get("index") in blocks:
                 blocks[ev["index"]]["parts"].append(ev["delta"].get("partial_json", ""))
@@ -70,11 +70,15 @@ def classify(req: dict, tool_uses: list[dict]) -> str | None:
     return "W1"
 
 
-def select(cands: dict[str, list[dict]], k: int = 3, seed: int = 42) -> dict[str, list[dict]]:
-    """各 W で bytes の 10/50/90 パーセンタイル(k=3)に最も近い候補を 1 つずつ選ぶ。重複は飛ばす。"""
+def select(cands: dict[str, list[dict]], k: int = 3, seed: int = 42,
+           max_bytes: int | None = None) -> dict[str, list[dict]]:
+    """各 W で bytes の 10/50/90 パーセンタイル(k=3)に最も近い候補を 1 つずつ選ぶ。重複は飛ばす。
+
+    max_bytes を与えると、それを超える候補を先に除く(計測側の ctx に収まらないプロンプトを避ける)。
+    """
     out: dict[str, list[dict]] = {}
     for w, items in cands.items():
-        items = sorted(items, key=lambda x: x["bytes"])
+        items = sorted((x for x in items if max_bytes is None or x["bytes"] <= max_bytes), key=lambda x: x["bytes"])
         if not items:
             out[w] = []
             continue
@@ -138,12 +142,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out-private", type=pathlib.Path, required=True)
     ap.add_argument("--manifest", type=pathlib.Path, required=True)
     ap.add_argument("--k", type=int, default=3)
+    ap.add_argument("--max-bytes", type=int, default=None,
+                    help="これを超える req 本体は候補から外す(目安: ctx 96k なら 300000、128k なら 420000。約 3.3 bytes/token)")
     args = ap.parse_args(argv)
 
     args.out_private.mkdir(parents=True, exist_ok=True)
     manifest: list[dict] = []
 
-    picked = select(_scan_ccshim(args.ccshim_dir), k=args.k)
+    picked = select(_scan_ccshim(args.ccshim_dir), k=args.k, max_bytes=args.max_bytes)
     for w, items in picked.items():
         for i, it in enumerate(items):
             pid = f"{w}-{i + 1:02d}"

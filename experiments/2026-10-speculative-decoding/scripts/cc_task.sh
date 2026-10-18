@@ -48,6 +48,10 @@ trace_last_idx() { # trace.jsonl の末尾行の idx(無ければ 0)
 
 echo "=== $TASK / $LABEL ==="
 run git -C "$RAG_REPO" worktree add --detach "$WT" "$RAG_REV"
+# 途中で失敗しても worktree を残さない(同じラベルで再実行できるように)
+trap 'git -C "$RAG_REPO" worktree remove --force "$WT" >/dev/null 2>&1 || true' EXIT
+# ccshim は再起動すると idx を 1 から振り直すので、範囲は trace.jsonl の行番号で持つ
+LINE_FROM=$(( $(trace_lines) + 1 ))
 IDX_FROM=$(( $(trace_last_idx) + 1 ))
 run curl -s "$SERVER_URL/metrics" -o "$OUT/before.txt"
 
@@ -67,14 +71,24 @@ set -e
 WALL=$(( $(date +%s) - T0 ))
 run curl -s "$SERVER_URL/metrics" -o "$OUT/after.txt"
 IDX_TO=$(trace_last_idx)
+LINE_TO=$(trace_lines)
+# この範囲の resp.bin は次に ccshim が再起動すると上書きされるので、いま退避する
+if [ "$DRY_RUN" != "1" ] && [ -f "$LOGDIR/trace.jsonl" ]; then
+  mkdir -p "$OUT/ccshim"
+  sed -n "${LINE_FROM},${LINE_TO}p" "$LOGDIR/trace.jsonl" > "$OUT/ccshim/trace.jsonl"
+  python3 -c 'import json,sys; [print("%03d" % json.loads(l)["idx"]) for l in open(sys.argv[1]) if l.strip()]' "$OUT/ccshim/trace.jsonl" \
+    | while read -r n; do for f in "$LOGDIR/$n-req.json" "$LOGDIR/$n-resp.bin"; do [ -f "$f" ] && cp "$f" "$OUT/ccshim/"; done; done
+fi
 
 # 判定: 変更 0 件 / timeout(124) は FAIL。それ以外は judge コマンドで決める
 CHANGED=0; PASS=false; JUDGE_EXIT=
 if [ "$DRY_RUN" = "1" ]; then
   echo "judge: $JUDGE  (cwd=$WT)"
 else
-  git -C "$WT" diff --stat > "$OUT/diff.txt" || true
-  CHANGED=$(git -C "$WT" status --porcelain | wc -l | tr -d ' ')
+  git -C "$WT" add -A >/dev/null 2>&1 || true
+  git -C "$WT" diff --cached --stat > "$OUT/diff.txt" || true
+  git -C "$WT" diff --cached > "$OUT/diff.patch" || true
+  CHANGED=$(git -C "$WT" diff --cached --name-only | wc -l | tr -d ' ')
   if [ "$EXIT" -ne 124 ] && [ "$CHANGED" -gt 0 ]; then
     set +e; ( cd "$WT" && bash -c "$JUDGE" ) > "$OUT/judge.log" 2>&1; JUDGE_EXIT=$?; set -e
     [ "$JUDGE_EXIT" -eq 0 ] && PASS=true
@@ -82,25 +96,29 @@ else
 fi
 
 if [ "$DRY_RUN" = "1" ]; then
-  echo "python3 scripts/cc_metrics.py --logdir $LOGDIR --from $IDX_FROM --to $IDX_TO --out $OUT/cc_metrics.json"
+  echo "python3 scripts/cc_metrics.py --logdir $LOGDIR --line-from $LINE_FROM --line-to $LINE_TO --out $OUT/cc_metrics.json"
 else
-  python3 scripts/cc_metrics.py --logdir "$LOGDIR" --from "$IDX_FROM" --to "$IDX_TO" \
+  set +e
+  python3 scripts/cc_metrics.py --logdir "$LOGDIR" --line-from "$LINE_FROM" --line-to "$LINE_TO" \
     --metrics-before "$OUT/before.txt" --metrics-after "$OUT/after.txt" --out "$OUT/cc_metrics.json" > /dev/null
+  [ $? -eq 0 ] || echo "警告: cc_metrics が範囲内のリクエストを見つけられませんでした(trace 行 ${LINE_FROM}-${LINE_TO})" >&2
+  set -e
 fi
 
 NUM_TURNS="$( [ -f "$OUT/claude.json" ] && python3 -c 'import json,sys
 try: print(json.load(open(sys.argv[1])).get("num_turns",""))
 except Exception: print("")' "$OUT/claude.json" || echo "")"
 
-python3 - "$OUT/summary.json" "$TASK" "$LABEL" "$PASS" "$WALL" "$EXIT" "${NUM_TURNS}" "$CHANGED" "$IDX_FROM" "$IDX_TO" "$OUT/cc_metrics.json" <<'PY'
+python3 - "$OUT/summary.json" "$TASK" "$LABEL" "$PASS" "$WALL" "$EXIT" "${NUM_TURNS}" "$CHANGED" "$IDX_FROM" "$IDX_TO" "$LINE_FROM" "$LINE_TO" "$OUT/cc_metrics.json" <<'PY'
 import json, pathlib, sys
-out, task, label, ok, wall, exit_code, turns, changed, i0, i1, ccm = sys.argv[1:]
+out, task, label, ok, wall, exit_code, turns, changed, i0, i1, l0, l1, ccm = sys.argv[1:]
 cc = json.load(open(ccm)) if pathlib.Path(ccm).exists() else None
 pathlib.Path(out).write_text(json.dumps({
     "task": task, "label": label, "pass": ok == "true", "wall_s": int(wall), "exit_code": int(exit_code),
     "num_turns": int(turns) if turns else None, "changed_files": int(changed),
-    "trace_idx": [int(i0), int(i1)], "cc_metrics": cc}, ensure_ascii=False, indent=2) + "\n")
+    "trace_idx": [int(i0), int(i1)], "trace_lines": [int(l0), int(l1)], "cc_metrics": cc}, ensure_ascii=False, indent=2) + "\n")
 print(f"{task} {label}: pass={ok} wall={wall}s exit={exit_code} turns={turns or '?'} changed={changed}")
 PY
 
 run git -C "$RAG_REPO" worktree remove --force "$WT"
+trap - EXIT

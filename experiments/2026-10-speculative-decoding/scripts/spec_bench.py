@@ -98,6 +98,53 @@ def extract_text(resp: dict) -> str:
     return ""
 
 
+def _strip_ids(obj):
+    if isinstance(obj, dict):
+        return {k: _strip_ids(v) for k, v in obj.items() if k != "id"}
+    if isinstance(obj, list):
+        return [_strip_ids(x) for x in obj]
+    return obj
+
+
+def generated_payload(resp: dict) -> str:
+    """決定性比較用の生成物。text だけでなく tool_use / thinking / tool_calls まで含め、id は除く。"""
+    if isinstance(resp.get("content"), list):
+        return json.dumps(_strip_ids(resp["content"]), ensure_ascii=False, sort_keys=True)
+    choices = resp.get("choices")
+    if isinstance(choices, list) and choices:
+        msg = choices[0].get("message") or {}
+        return json.dumps({"reasoning_content": msg.get("reasoning_content"), "content": msg.get("content"),
+                           "tool_calls": _strip_ids(msg.get("tool_calls"))}, ensure_ascii=False, sort_keys=True)
+    return ""
+
+
+def block_types(resp: dict) -> list[str]:
+    """応答に含まれるブロック種別。thinking が切れているか、tool_use が出ているかを後から確認するため。"""
+    if isinstance(resp.get("content"), list):
+        return [b.get("type", "?") for b in resp["content"] if isinstance(b, dict)]
+    choices = resp.get("choices")
+    if isinstance(choices, list) and choices:
+        msg = choices[0].get("message") or {}
+        out = []
+        if msg.get("reasoning_content"):
+            out.append("reasoning")
+        if msg.get("content"):
+            out.append("text")
+        if msg.get("tool_calls"):
+            out.append("tool_calls")
+        return out
+    return []
+
+
+def stop_reason(resp: dict) -> str | None:
+    if "stop_reason" in resp:
+        return resp.get("stop_reason")
+    choices = resp.get("choices")
+    if isinstance(choices, list) and choices:
+        return choices[0].get("finish_reason")
+    return None
+
+
 # --------------------------------------------------------------------------- HTTP
 
 def build_body(endpoint: str, prompt: dict, n_predict: int, think: bool) -> dict:
@@ -112,6 +159,8 @@ def build_body(endpoint: str, prompt: dict, n_predict: int, think: bool) -> dict
         body["temperature"] = 0
         body["stream"] = False
         body["thinking"] = {"type": "enabled", "budget_tokens": n_predict} if think else {"type": "disabled"}
+        # Anthropic 形式の thinking 指定が無視される build に備え、テンプレート側のスイッチも併記する
+        body["chat_template_kwargs"] = {"enable_thinking": think}
         return body
     return {
         "messages": prompt["messages"],
@@ -154,6 +203,14 @@ def fetch_metrics(url: str, timeout: float = 30) -> tuple[dict[str, float], str]
             return parse_metrics(res.read().decode()), ""
     except Exception as e:
         return {}, repr(e)
+
+
+def fetch_build(url: str, timeout: float = 30) -> str | None:
+    try:
+        with urllib.request.urlopen(url.rstrip("/") + "/props", timeout=timeout) as res:
+            return json.loads(res.read()).get("build_info")
+    except Exception:
+        return None
 
 
 # --------------------------------------------------------------------------- GPU
@@ -223,22 +280,29 @@ def main(argv: list[str] | None = None) -> int:
     prompt = json.loads(args.prompt_file.read_text())
     body = build_body(args.endpoint, prompt, args.n_predict, args.think)
 
+    build = fetch_build(args.url)
     before, err_before = fetch_metrics(args.url)
     with GpuSampler(enabled=bool(args.nvidia_smi)) as gpu:
         status, resp, wall, error = run_once(args.url, args.endpoint, body, timeout=args.timeout)
     after, err_after = fetch_metrics(args.url)
 
     text = extract_text(resp) if resp else ""
+    payload = generated_payload(resp) if resp else ""
     errors = [e for e in (error, err_before and f"metrics before: {err_before}",
                           err_after and f"metrics after: {err_after}") if e]
+    # /metrics が片方でも取れなければ差分は信用できない。None にして集計側で errors に数えさせる
+    metrics_ok = not err_before and not err_after
     row = {
         "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "block": args.block, "config": args.config, "spec": args.spec, "workload": args.workload,
         "prompt_id": args.prompt_id, "endpoint": args.endpoint, "n_predict": args.n_predict,
-        "think": args.think, "url": args.url,
+        "think": args.think, "url": args.url, "build": build,
         "status": status, "error": "; ".join(errors), "wall_s": round(wall, 3),
-        "metrics": metrics_delta(before, after),
+        "metrics": metrics_delta(before, after) if metrics_ok else None,
         "timings": extract_timings(resp) if resp else None,
+        "stop_reason": stop_reason(resp) if resp else None,
+        "block_types": block_types(resp) if resp else [],
+        "payload_sha256": hashlib.sha256(payload.encode()).hexdigest(),
         "text_sha256": hashlib.sha256(text.encode()).hexdigest(),
         "text_len": len(text), "text_head": text[:200],
         "gpu": gpu.summary(),
@@ -246,9 +310,11 @@ def main(argv: list[str] | None = None) -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("a") as f:
         f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    m = row["metrics"] or {}
     print(f"[{args.config}/{args.spec}/{args.prompt_id}] status={status} wall={wall:.1f}s "
-          f"decode={row['metrics']['decode_tok_s']} acc={row['metrics']['acceptance']}", flush=True)
-    return 0 if status == 200 else 1
+          f"decode={m.get('decode_tok_s')} acc={m.get('acceptance')} stop={row['stop_reason']} "
+          f"blocks={row['block_types']}", flush=True)
+    return 0 if status == 200 and metrics_ok else 1
 
 
 if __name__ == "__main__":

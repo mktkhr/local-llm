@@ -46,8 +46,21 @@ prompt_files_of() {
 }
 
 run() { if [ "$DRY_RUN" = "1" ]; then echo "$*"; else "$@"; fi; }
+shuffle_by() { python3 -c 'import random,sys; l=sys.stdin.read().split(); random.Random(int(sys.argv[1])).shuffle(l); print("\n".join(l))' "$1"; }
 
 [ -f config/.env ] || { echo "config/.env がありません。config/.env.example をコピーしてください" >&2; exit 1; }
+for config in $CONFIGS; do [ -f "config/model/${config}.args" ] || { echo "config/model/${config}.args がありません" >&2; exit 1; }; done
+for spec in $SPECS; do [ -f "config/spec/${spec}.args" ] || { echo "config/spec/${spec}.args がありません" >&2; exit 1; }; done
+# 本番の llama-swap など、別プロセスが VRAM を掴んだままだと OOM か計測汚染になる(00-plan.md Phase 0 手順 6)
+if [ "$DRY_RUN" != "1" ]; then
+  used="$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ' ')"
+  if [ -n "$used" ] && [ "$used" -gt "${VRAM_IDLE_MAX_MIB:-1000}" ]; then
+    echo "GPU が使用中です(memory.used=${used} MiB)。本番スタックを止めてから実行してください: docker compose -f ../../deploy/llama-swap/compose.yml stop" >&2
+    nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv >&2 || true
+    exit 1
+  fi
+fi
+trap 'echo "中断: llama-spec を停止します" >&2; $COMPOSE down llama-spec >/dev/null 2>&1 || true' INT TERM
 mkdir -p results/raw
 TS="$(date +%Y%m%d-%H%M%S)"
 OUT="results/raw/sweep-${TS}.jsonl"
@@ -106,11 +119,17 @@ for ((b = 1; b <= BLOCKS; b++)); do
       echo "    args: $LLAMA_ARGS" >> "$LOG"
       export LLAMA_ARGS
       run $COMPOSE up -d --force-recreate llama-spec
-      wait_health || { run $COMPOSE down llama-spec; exit 1; }
-      run curl -s "$URL/props" -o "results/raw/props-${config}-${spec}-${b}.json"
+      set +e; wait_health; hc=$?; set -e
+      if [ "$hc" -eq 2 ]; then
+        echo "${config} ${spec} block=${b}: 起動失敗のため飛ばします" | tee -a "$LOG" "results/raw/sweep-${TS}-skipped.txt" >&2
+        run $COMPOSE down llama-spec; continue
+      elif [ "$hc" -ne 0 ]; then
+        run $COMPOSE down llama-spec; exit 1
+      fi
+      run curl -s "$URL/props" -o "results/raw/props-${TS}-${config}-${spec}-${b}.json"
 
       # 捨てリクエスト(W1 の先頭)。プレフィックスを温め、W1 を全て warm で測る
-      primer="$(prompt_files_of W1 | head -1)"
+      primer=""; [[ " $WORKLOADS " == *" W1 "* ]] && primer="$(prompt_files_of W1 | head -1)"
       if [ -n "$primer" ]; then
         run python3 scripts/spec_bench.py --url "$URL" --endpoint messages --prompt-file "$primer" \
           --n-predict 8 --out /dev/null --config "$config" --spec "$spec" --workload W1 \

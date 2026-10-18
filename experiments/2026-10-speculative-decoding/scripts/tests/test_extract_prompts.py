@@ -54,6 +54,12 @@ class Select(unittest.TestCase):
         picked = select(c, k=3)
         self.assertEqual([p["bytes"] for p in picked["W1"]], [200, 600, 1000])
 
+    def test_max_bytes_filters_candidates(self):
+        c = {"W1": [{"bytes": b, "req": {}} for b in range(100, 1100, 100)]}
+        picked = select(c, k=3, max_bytes=500)
+        self.assertTrue(all(p["bytes"] <= 500 for p in picked["W1"]))
+        self.assertEqual(len(picked["W1"]), 3)
+
     def test_fewer_candidates_than_k(self):
         picked = select({"W2": [{"bytes": 5, "req": {}}]}, k=3)
         self.assertEqual(len(picked["W2"]), 1)

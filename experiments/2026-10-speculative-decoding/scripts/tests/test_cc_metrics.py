@@ -6,7 +6,7 @@ import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from cc_metrics import session_stats, text_blocks_in_resp  # noqa: E402
+from cc_metrics import main, session_stats, text_blocks_in_resp  # noqa: E402
 from test_extract_prompts import SSE  # noqa: E402  (正常な Edit tool_use の SSE)
 
 BROKEN = json.dumps({
@@ -50,6 +50,18 @@ class SessionStats(unittest.TestCase):
         self.assertEqual(s["raw_token_leak"], 1)
         self.assertEqual(s["cache_n_list"], [None, 25000])
         self.assertAlmostEqual(s["wall_s_sum"], 15.5)
+
+    def test_line_range_survives_idx_reset(self):
+        # ccshim 再起動で idx が 1 から振り直されても、trace.jsonl の行番号なら一意
+        with (self.dir / "trace.jsonl").open("a") as f:
+            f.write(json.dumps({"idx": 1, "path": "/v1/messages", "status": 200, "dur_s": 2.0}) + "\n")
+        s = session_stats(self.dir, line_from=4, line_to=4)
+        self.assertEqual(s["requests"], 1)
+        self.assertAlmostEqual(s["wall_s_sum"], 2.0)
+
+    def test_main_fails_when_no_requests(self):
+        self.assertNotEqual(main(["--logdir", str(self.dir), "--line-from", "2", "--line-to", "2"]), 0)
+        self.assertEqual(main(["--logdir", str(self.dir), "--line-from", "1", "--line-to", "3"]), 0)
 
     def test_range_filter(self):
         self.assertEqual(session_stats(self.dir, 2, 2)["requests"], 0)

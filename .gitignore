@@ -22,3 +22,10 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# 階層型 KV キャッシュ計測のローカル設定と KV ダンプ
+experiments/2026-09-kv-tier/config/.env
+experiments/2026-09-kv-tier/config/kv/*.bin
+
+# SearXNG の秘密鍵入り設定(example から生成する)
+deploy/webui/searxng/settings.yml

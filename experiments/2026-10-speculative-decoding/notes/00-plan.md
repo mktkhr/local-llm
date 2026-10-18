@@ -114,6 +114,8 @@ D 構成(`qwen36-35b-iq3s-256k`)に MTP を足して Phase 1 の W1 / W2 だけ�
 
 ### Phase 4: 判定と反映
 
+**結果(2026-10-18)**: 主指標は未達(M1+M2 合計で現行比 +7〜21%)。tool_use 破損 0・cache 維持で品質は問題なし。Claude Code 用の deploy は変更しない。チャット用途向けの別エントリ追加は利用者の判断に委ねる。Phase 3 は Phase 2 で利得が無かったため見送り。
+
 主指標を満たした設定だけ [deploy/llama-swap/config.yaml](../../../deploy/llama-swap/config.yaml) に反映する。その際 `llama-swap:cuda` 同梱の llama.cpp で同じフラグが通るかを再確認する(通らなければ deploy 側のイメージ更新が先)。
 
 ## 7. 成果物

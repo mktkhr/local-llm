@@ -50,6 +50,10 @@ Ollama / KV q8_0 / NUM_PARALLEL=1 での結果。llama.cpp + Qwen3.6-35B-A3B を
 
 ---
 
+**投機デコード(2026-10)**: Qwen3.6-35B-A3B の MTP は全層 GPU(IQ3_XXS)で decode +26〜46%、チャット・要約・思考用途で +33〜57%。Claude Code 用途では wall time が縮まず非採用。詳細は [experiments/2026-10-speculative-decoding](../experiments/2026-10-speculative-decoding/README.md)。
+
+---
+
 ## Apple M4 Pro (48 GB Unified Memory, MLX)
 
 | 用途                   | モデル                                       | 根拠                                                                                                |

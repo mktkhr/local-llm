@@ -95,7 +95,7 @@
 
 `scripts/sweep.sh` でブロック設計のまま回す。出力は `results/raw/*.jsonl`(gitignore)→ `scripts/aggregate.py` で `results/spec_sweep.csv` に集計。
 
-prefix cache の扱い: W1 は全プロンプトが同じ system + ツール定義を共有するため、サーバ起動直後に捨てリクエストを 1 本流し、以降の W1 は**全て warm prefix**(実運用の 2 ターン目以降と同じ状態)で測る。`cache_n` を記録して warm になっていることを確認する。cold の TTFT は別途 1 本だけ記録する。問い 3(prefix cache と MTP の両立)は Phase 2 のターン間 `cache_n` で判定する。
+prefix cache の扱い(Phase 0 で修正): W1 の 3 本は別セッション由来で共通 prefix が無く、`-np 1` では直前のプロンプトの KV しか残らないため「W1 を全て warm で測る」は成立しない。Phase 1 の W1 / W2 は **cold prefill** として測り、warm prefix の挙動(問い 3)は Phase 2 の実セッションの `cache_n` で判定する。primer(W1 先頭、n_predict 8)は cold TTFT の参考値として `primer-<TS>.jsonl` に残す。
 
 比較対象 (a) 現行 deploy 構成は、本番スタックを一時再開して同じプロンプトを 1 ブロックだけ流して取る。
 

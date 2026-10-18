@@ -12,7 +12,7 @@
 #
 # 環境変数:
 #   BLOCKS          ブロック数(既定 3)
-#   CONFIGS         config/model/<name>.args の名前(既定 "C B")
+#   CONFIGS         config/model/<name>.args の名前(既定 "C-iq3xxs B"。IQ3_S は MTP ヘッド分で 16 GB に収まらない。00-plan.md §4)
 #   SPECS           config/spec/<name>.args の名前(既定は 7 設定)
 #   WORKLOADS       W1 W2 W3 W4 のうち流すもの(既定 全部)
 #   HEALTH_TIMEOUT  /health 待ちの上限秒(既定 2400。初回は GGUF 取得で 30 分超える)
@@ -24,7 +24,7 @@ ROOT="$(cd "$HERE/.." && pwd)"
 cd "$ROOT"
 
 BLOCKS="${BLOCKS:-3}"
-CONFIGS="${CONFIGS:-C B}"
+CONFIGS="${CONFIGS:-C-iq3xxs B}"
 SPECS="${SPECS:-none mtp1 mtp2 mtp3 ngram-simple ngram-mod mtp2-ngram-simple}"
 WORKLOADS="${WORKLOADS:-W1 W2 W3 W4}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-2400}"

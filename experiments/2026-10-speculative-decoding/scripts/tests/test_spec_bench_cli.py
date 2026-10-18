@@ -82,6 +82,7 @@ class CliRun(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.srv.shutdown()
+        cls.srv.server_close()
 
     def _run(self, url: str, out: pathlib.Path, prompt: pathlib.Path) -> int:
         return main(["--url", url, "--endpoint", "chat", "--prompt-file", str(prompt), "--n-predict", "64",

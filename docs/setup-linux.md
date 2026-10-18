@@ -108,4 +108,4 @@ ollama ps
 
 `ollama ps` で `100% GPU` と表示されていれば CPU オフロードなしでロードできています。
 
-次は [docs/02-benchmark.md](02-benchmark.md) で本格計測へ。
+次は [docs/benchmark-linux.md](benchmark-linux.md) で本格計測へ。

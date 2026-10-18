@@ -1,6 +1,6 @@
 # 01. 環境構築 (Apple Silicon / MLX)
 
-mlx-lm を計測しやすい状態に整えるところまで。Linux + CUDA + Ollama の手順は [docs/01-setup.md](../01-setup.md)。
+mlx-lm を計測しやすい状態に整えるところまで。Linux + CUDA + Ollama の手順は [docs/setup-linux.md](setup-linux.md)。
 
 ## 0. 大前提
 
@@ -8,15 +8,15 @@ mlx-lm を計測しやすい状態に整えるところまで。Linux + CUDA + O
 
 Mac/MLX 環境の特徴(Linux + CUDA との主な差分):
 
-| 観点                | Linux + CUDA (Ollama)           | Mac + MLX (mlx-lm)                     |
+| 観点 | Linux + CUDA (Ollama) | Mac + MLX (mlx-lm) |
 | ------------------- | ------------------------------- | -------------------------------------- | --- |
-| 推論ランタイム      | Ollama (llama.cpp + CUDA)       | mlx-lm (MLX, Apple 純正)               |
-| メモリ              | 専用 VRAM                       | ユニファイドメモリ(CPU と共用)         |
-| メモリ計測          | `nvidia-smi`                    | `mlx.get_peak_memory()`                |
-| KV キャッシュ量子化 | systemd 環境変数 → サーバ再起動 | リクエスト時引数 `kv_bits=4            | 8`  |
-| Flash Attention     | `OLLAMA_FLASH_ATTENTION=1`      | mlx-lm 既定 SDPA(明示ノブなし)         |
-| サービス常駐        | `systemctl ollama`              | 不要(Python プロセスで完結)            |
-| モデルフォーマット  | GGUF                            | MLX safetensors (HF `mlx-community/*`) |
+| 推論ランタイム | Ollama (llama.cpp + CUDA) | mlx-lm (MLX, Apple 純正) |
+| メモリ | 専用 VRAM | ユニファイドメモリ(CPU と共用) |
+| メモリ計測 | `nvidia-smi` | `mlx.get_peak_memory()` |
+| KV キャッシュ量子化 | systemd 環境変数 → サーバ再起動 | リクエスト時引数 `kv_bits=4            | 8` |
+| Flash Attention | `OLLAMA_FLASH_ATTENTION=1` | mlx-lm 既定 SDPA(明示ノブなし) |
+| サービス常駐 | `systemctl ollama` | 不要(Python プロセスで完結) |
+| モデルフォーマット | GGUF | MLX safetensors (HF `mlx-community/*`) |
 
 ## 1. ハードウェア事前確認
 
@@ -75,7 +75,7 @@ Homebrew 経由でも可: `brew install uv`。
 ## 3. bench-mlx の依存導入
 
 ```bash
-cd scripts/bench-mlx
+cd tools/bench-mlx
 uv sync
 ```
 
@@ -126,7 +126,7 @@ Linux 版の OLLAMA\_\* 環境変数に相当する MLX 側のノブ。Linux で
 軽量モデルで一発スモーク:
 
 ```bash
-cd scripts/bench-mlx
+cd tools/bench-mlx
 uv run python run_speed_mlx.py \
     --model mlx-community/Qwen2.5-0.5B-Instruct-4bit \
     --ctx 8192 --num-predict 64
@@ -170,4 +170,4 @@ export HF_TOKEN="..."           # private repo や rate limit 緩和用
 export HF_HOME=~/.cache/huggingface
 ```
 
-次は [docs/mac/02-benchmark.md](02-benchmark.md) で本格計測へ。
+次は [docs/benchmark-mac.md](benchmark-mac.md) で本格計測へ。

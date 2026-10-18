@@ -1,8 +1,8 @@
 # 06. 実用性評価(品質含む)
 
-docs/02-benchmark.md は単純な速度計測を扱う。本書はそこから一歩進めて、**コーディング / 会議要約 / 長コンテキスト** の 3 用途で **品質まで含めた実用性** を比較評価するための方法論。
+docs/benchmark-linux.md は単純な速度計測を扱う。本書はそこから一歩進めて、**コーディング / 会議要約 / 長コンテキスト** の 3 用途で **品質まで含めた実用性** を比較評価するための方法論。
 
-ハードウェア非依存。実機固有のモデル選定・実測値は [docs/04-results.md](04-results.md) の該当 GPU セクションへ。
+ハードウェア非依存。実機固有のモデル選定・実測値は [docs/hardware-reference.md](hardware-reference.md) の該当 GPU セクションへ。
 
 ## 1. 目的
 
@@ -15,7 +15,7 @@ docs/02-benchmark.md は単純な速度計測を扱う。本書はそこから�
 
 ## 2. 前提
 
-[01-setup.md](01-setup.md) / [02-benchmark.md](02-benchmark.md) / [03-tuning.md](03-tuning.md) を前提として読む(Mac は [mac/01-setup.md](mac/01-setup.md) / [mac/02-benchmark.md](mac/02-benchmark.md))。固定する設定の **理由** は [README の「評価の前提」](../README.md#評価の前提なぜこの既定値なのか) を参照。
+[setup-linux.md](setup-linux.md) / [benchmark-linux.md](benchmark-linux.md) / [tuning.md](tuning.md) を前提として読む(Mac は [setup-mac.md](setup-mac.md) / [benchmark-mac.md](benchmark-mac.md))。固定する設定の **理由** は [README の「評価の前提」](../README.md#評価の前提なぜこの既定値なのか) を参照。
 
 **Linux + Ollama 環境:**
 
@@ -45,10 +45,10 @@ docs/02-benchmark.md は単純な速度計測を扱う。本書はそこから�
 | GPU 名         | `nvidia-smi --query-gpu=name --format=csv,noheader` |
 | Kernel         | `uname -r`                                          |
 | OS             | `lsb_release -ds`                                   |
-| 計測スクリプト | `git rev-parse HEAD`(scripts/bench 配下)            |
+| 計測スクリプト | `git rev-parse HEAD`(tools/bench 配下)              |
 | Model digest   | `ollama show <tag>` または `ollama list` の ID 列   |
 
-これらをまとめた `metadata.json` を計測実行ごとに `scripts/bench/results/<timestamp>/metadata.json` として保存する。
+これらをまとめた `metadata.json` を計測実行ごとに `tools/bench/results/<timestamp>/metadata.json` として保存する。
 
 評価開始前に Ollama 最新版へ更新する:
 
@@ -67,16 +67,16 @@ ollama --version
 | Kernel           | `uname -r`                                     |
 | macOS            | `sw_vers`                                      |
 | GPU 上限         | `mlx.core.device_info()`                       |
-| 計測スクリプト   | `git rev-parse HEAD`(scripts/bench-mlx 配下)   |
+| 計測スクリプト   | `git rev-parse HEAD`(tools/bench-mlx 配下)     |
 | Model HF repo id | `mlx-community/<repo>` フル ID                 |
 
-これらは `scripts/bench-mlx/metadata_mlx.py` が自動採取し、`results/<timestamp>/metadata.json` に保存する。
+これらは `tools/bench-mlx/metadata_mlx.py` が自動採取し、`results/<timestamp>/metadata.json` に保存する。
 
 ## 4. 評価用 systemd 設定 / MLX 設定
 
 ### Linux + Ollama
 
-[01-setup.md](01-setup.md) の override.conf に対して、本評価では:
+[setup-linux.md](setup-linux.md) の override.conf に対して、本評価では:
 
 - `OLLAMA_KV_CACHE_TYPE` は記載しない(評価軸として動的に切り替える)
 - `OLLAMA_CONTEXT_LENGTH` も記載しない(API リクエストで明示する)
@@ -132,7 +132,7 @@ Ollama のような「サーバ再起動」フローが無いため、KV 量子�
             │        それでもダメなら対象外
             └─ Yes → ctx を二分探索で最大化
                        ↓
-                  速度計測(02-benchmark.md のテンプレ)
+                  速度計測(benchmark-linux.md のテンプレ)
                        ↓
                   品質評価(Needle → Summary → Coding)
                        ↓
@@ -146,7 +146,7 @@ Ollama のような「サーバ再起動」フローが無いため、KV 量子�
 ディレクトリ構成:
 
 ```
-scripts/bench/
+tools/bench/
   ├─ data/
   │   ├─ coding/      # pytest 可能な Python タスク
   │   ├─ summary/     # 期待キーポイント・期待 TODO を仕込んだ文字起こし
@@ -264,7 +264,7 @@ scripts/bench/
 
 ## 9. 出力フォーマット
 
-実測結果は [docs/04-results.md](04-results.md) の該当 GPU セクションに追記する。
+実測結果は [docs/hardware-reference.md](hardware-reference.md) の該当 GPU セクションに追記する。
 
 ### 9.1 測定環境ヘッダー(必須)
 
@@ -277,7 +277,7 @@ scripts/bench/
 - Driver: <ver> / CUDA <ver>
 - OS: <distro>, Linux <kernel>
 - Ollama: v<X.Y.Z>
-- 計測スクリプト: scripts/bench/ @ <git short hash>
+- 計測スクリプト: tools/bench/ @ <git short hash>
 - 計測者: <username>
 ```
 
@@ -290,7 +290,7 @@ Mac 版:
 - Effective GPU limit: <max_recommended_working_set>GB
 - OS: macOS <ver> (<build>), Darwin <kernel>
 - mlx: <ver> / mlx-lm: <ver>
-- 計測スクリプト: scripts/bench-mlx/ @ <git short hash>
+- 計測スクリプト: tools/bench-mlx/ @ <git short hash>
 - 計測者: <username>
 ```
 
@@ -330,13 +330,13 @@ Coding は pytest 合格率(0-1)、Summary は被覆率(0-1)、Needle は成功�
 1. Ollama を最新安定版へ更新
 2. metadata 記録(§3)
 3. systemd `override.conf` を §4 の状態に
-4. `scripts/bench/` を最新化、合成データを生成
+4. `tools/bench/` を最新化、合成データを生成
 5. 評価対象モデルを Ollama Library で確認 → `ollama pull`
-   - 対象 / 対象外と根拠を docs/04-results.md の該当 GPU セクションに記載
+   - 対象 / 対象外と根拠を experiments/<実験>/README.md の該当 GPU セクションに記載
 6. **Pass 1**: Q4_K_M / KV=q8_0 で最大 ctx を二分探索
 7. **Pass 2**: 採用候補で品質評価(Needle / Coding / Summary)
 8. **Pass 3**(必要なら): 強量子化や別 KV 設定で長 ctx 救済
-9. 結果を docs/04-results.md に追記
+9. 結果を experiments/<実験>/README.md に追記
 10. 最終分析を執筆
 
 ## 11. リスク・既知の制約(汎用)
@@ -349,8 +349,8 @@ Coding は pytest 合格率(0-1)、Summary は被覆率(0-1)、Needle は成功�
 | 既定 ctx の上書き可否     | タグごとに既定 ctx が極端に小さいケースあり(例: 4K) | リクエストで `num_ctx` を明示、ロード後の `ollama ps` CONTEXT 列で反映確認           |
 | 合成データの代表性        | 実タスクとの乖離                                    | 「合成データの初版」と明記、実データへ差し替え可能な構造にしておく                   |
 | VRAM サンプリング粒度     | `nvidia-smi` 1Hz は瞬間ピークを取り逃す可能性       | 初版は 1Hz、必要なら `pynvml` で精緻化                                               |
-| GPU 世代による FA 効果差  | 旧世代は FA の速度メリット限定                      | [docs/03-tuning.md](03-tuning.md) §5 参照                                            |
+| GPU 世代による FA 効果差  | 旧世代は FA の速度メリット限定                      | [docs/tuning.md](tuning.md) §5 参照                                                  |
 
 ---
 
-本書は方法論。実機固有の評価対象選定・実測値は [docs/04-results.md](04-results.md) の該当 GPU セクションへ。
+本書は方法論。実機固有の評価対象選定・実測値は [docs/hardware-reference.md](hardware-reference.md) の該当 GPU セクションへ。

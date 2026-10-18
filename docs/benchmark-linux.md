@@ -103,11 +103,11 @@ memory.used [MiB], memory.free [MiB]
 - `nvidia-smi` の `memory.used` が `ollama ps` の `SIZE` より大幅に小さい
 - 生成速度が同モデルの GPU 100% 時の半分未満まで落ちている
 
-→ [03-tuning.md](03-tuning.md) の判定フローへ。
+→ [tuning.md](tuning.md) の判定フローへ。
 
 ## 5. 計測結果の残し方
 
-[04-results.md](04-results.md) に1行追記。必要な情報は以下。
+[hardware-reference.md](hardware-reference.md) に1行追記。必要な情報は以下。
 
 - ハードウェア(GPU名 / VRAM / Compute Capability)
 - モデル名(`vendor:tag`)とサイズ

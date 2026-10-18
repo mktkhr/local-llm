@@ -1,6 +1,6 @@
 # 02. 計測 (Apple Silicon / MLX)
 
-mlx-lm で「このモデルがこの設定で安定して動くか」を見るための計測手順と、結果のどこを読むか。Linux + Ollama 版は [docs/02-benchmark.md](../02-benchmark.md)。
+mlx-lm で「このモデルがこの設定で安定して動くか」を見るための計測手順と、結果のどこを読むか。Linux + Ollama 版は [docs/benchmark-linux.md](benchmark-linux.md)。
 
 ## 1. 計測の原則
 
@@ -23,7 +23,7 @@ Linux + Ollama 版との差分:
 `bench-mlx/run_speed_mlx.py` を直接呼ぶのが正攻法。`<MODEL>` と `<CTX>` を埋めるだけ:
 
 ```bash
-cd scripts/bench-mlx
+cd tools/bench-mlx
 
 MODEL=mlx-community/Qwen3.5-9B-MLX-4bit
 CTX=32768
@@ -120,11 +120,11 @@ Apple Silicon ではユニファイドメモリ上で動くため Linux のよ�
 | **`generation_tps` が極端に低い (< 5 tok/s)** | 重みが swap されていると桁で落ちる                                                                                |
 | **`max_buffer_length` 超過で例外**            | 単一テンソル割当がデバイス上限を超えた場合。極端に大きなモデルで発生                                              |
 
-→ どれかに該当したら [docs/03-tuning.md](../03-tuning.md) の判定フローを Mac/MLX 用に読み替えて適用する(KV 量子化 → `max_kv_size` を下げる → 重み量子化を強める)。
+→ どれかに該当したら [docs/tuning.md](tuning.md) の判定フローを Mac/MLX 用に読み替えて適用する(KV 量子化 → `max_kv_size` を下げる → 重み量子化を強める)。
 
 ## 5. 計測結果の残し方
 
-[docs/04-results.md](../04-results.md) の該当 Mac セクションに 1 行追記。必要な情報は以下:
+[docs/hardware-reference.md](hardware-reference.md) の該当 Mac セクションに 1 行追記。必要な情報は以下:
 
 - ハードウェア(`Apple M4 Pro (48GB Unified, MLX)` 等。`max_recommended_working_set` の値も併記)
 - モデル名(`mlx-community/<repo>` フル ID)と重み量子化レベル

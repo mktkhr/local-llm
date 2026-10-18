@@ -1,0 +1,1 @@
+-hf unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-IQ3_XXS --no-mmproj --ctx-size 131072 --kv-unified -ctk q8_0 -ctv q8_0 -b 2048 -ub 512 --cache-reuse 256

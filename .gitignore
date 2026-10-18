@@ -32,3 +32,10 @@ experiments/2026-09-kv-tier/config/kv/*.bin
 
 # SearXNG の秘密鍵入り設定(example から生成する)
 deploy/webui/searxng/settings.yml
+
+# superpowers の作業用スクラッチ(台帳・レビュー資料)
+.superpowers/
+
+# 投機デコード計測のローカル設定と、Claude Code の system prompt を含む抽出プロンプト
+experiments/2026-10-speculative-decoding/config/.env
+experiments/2026-10-speculative-decoding/scripts/data/private/

@@ -1,0 +1,1 @@
+--spec-type draft-simple -hfd unsloth/Qwen3.5-0.8B-GGUF:Q8_0 -ngld 99 --spec-draft-n-max 8

@@ -1,0 +1,41 @@
+# 投機デコード計測用の llama-server と ccshim。
+#
+# deploy/llama-swap と同じイメージ(llama.cpp build 10920)をダイジェストでピンし、
+# 引数は LLAMA_ARGS 環境変数で丸ごと渡す(scripts/sweep.sh が *.args を連結して組み立てる)。
+# 本番の llama-swap(:11435)/ ccshim(:11436-11438)とはポートを分け、同時起動はしない
+# (16 GB に 2 本は載らない)。
+services:
+  llama-spec:
+    image: ${LLAMA_IMAGE:?LLAMA_IMAGE を .env に設定してください}
+    container_name: llama-spec
+    entrypoint: ["/app/llama-server"]
+    command: ${LLAMA_ARGS:?LLAMA_ARGS を環境変数で渡してください}
+    restart: "no"
+    gpus: all
+    ports:
+      - "${SPEC_SERVER_PORT:-18081}:18081"
+    volumes:
+      # deploy/llama-swap が -hf で取得した GGUF のキャッシュを共有する(再ダウンロード回避)
+      - llama-cache:/root/.cache
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+
+  # Phase 2 用。Claude Code の role:"system" 畳み込みは deploy のシムをそのまま流用する。
+  # ログは results/raw/ccshim-log に bind し、scripts/cc_metrics.py が直接読む。
+  ccshim-spec:
+    image: python:3.13-alpine
+    container_name: ccshim-spec
+    command: ["python3", "/app/ccshim.py", "11439", "http://llama-spec:18081", "/log"]
+    restart: "no"
+    ports:
+      - "${SPEC_SHIM_PORT:-11439}:11439"
+    volumes:
+      - ../../../deploy/llama-swap:/app:ro
+      - ../results/raw/ccshim-log:/log
+    depends_on:
+      - llama-spec
+
+volumes:
+  llama-cache:
+    external: true
+    name: llama_llama-cache

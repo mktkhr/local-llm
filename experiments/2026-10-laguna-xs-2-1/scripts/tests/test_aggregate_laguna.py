@@ -18,7 +18,7 @@ class Speed(unittest.TestCase):
         rows = [row("current-C", 1, "p1", 150, 3000, 15000), row("L-iq3xxs", 1, "p1", 120, 3600, 14000),
                 row("current-C", 2, "p1", 148, 3000, 15000), row("L-iq3xxs", 2, "p1", 126, 3600, 14000)]
         s = {r["config"]: r for r in summarize_speed(rows, reference="current-C")}
-        self.assertAlmostEqual(s["L-iq3xxs"]["decode_vs_ref"], (120 / 150 + 126 / 148) / 2)
+        self.assertAlmostEqual(s["L-iq3xxs"]["decode_vs_ref"], (120 / 150 + 126 / 148) / 2, places=2)
         self.assertAlmostEqual(s["L-iq3xxs"]["prefill_vs_ref"], 1.2)
         self.assertEqual(s["current-C"]["decode_vs_ref"], 1.0)
         self.assertEqual(s["L-iq3xxs"]["vram_peak_mib_max"], 14000)

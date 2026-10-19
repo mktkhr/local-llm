@@ -47,7 +47,7 @@ Poolside Laguna XS 2.1(33B-A3B、agentic coding 特化)を RTX 4080 SUPER 16 GB 
 | Qwen3.6 IQ3_S 128k | 108 tok/s          | 150            | 151            | 3,659 tok/s     | 14,939 MiB |
 | Laguna IQ3_XXS 64k | 95(0.88)           | **178(1.19)**  | **190(1.26)**  | **4,029(1.12)** | 15,757 MiB |
 
-W1 の prefill は prefix cache のヒット量が構成間で揃わなかった(Qwen は 3 本が同じ system を共有して cache に乗り、Laguna は乗らなかった)ため比較しない。decode は cache に依らない。
+W1 の prefill は 3 本が同じ system を共有して prefix cache に乗る(primer 後は 1〜2k トークンしか計算しない)ため、平均値は比較しない。cold で計算した 1 本(W1-02、59k トークン)は Laguna 3,091 tok/s で、Qwen3.6 の前実験の cold(56k)2,956 tok/s と同等。decode は cache に依らない。Laguna は tool_use の前に短いテキストを挟む(`['text','tool_use']`)、Qwen3.6 は tool_use だけを返す。
 
 ### Phase 2: Claude Code 実タスク(`results/claude_code.csv`)
 

@@ -53,5 +53,5 @@ for ((i = 1; i <= RUNS; i++)); do
     run $COMPOSE down
   done
 done
-run python3 scripts/aggregate.py
-echo "=== done" | tee -a "$LOG"
+# 集計は呼び出し側で行う(別実験から MODEL_ARGS_DIR 経由で使うと、ここで集計するとこの実験の results/*.csv を上書きしてしまう)
+echo "=== done(集計: python3 scripts/aggregate.py)" | tee -a "$LOG"

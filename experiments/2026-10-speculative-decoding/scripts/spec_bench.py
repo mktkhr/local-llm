@@ -216,17 +216,28 @@ def fetch_build(url: str, timeout: float = 30) -> str | None:
 # --------------------------------------------------------------------------- GPU
 
 class GpuSampler:
-    """nvidia-smi を別スレッドで定期的に叩き、VRAM ピーク・電力・温度を集める。"""
+    """nvidia-smi を別スレッドで定期的に叩き、VRAM ピーク・電力・温度・SM クロックを集める。
 
-    _QUERY = ["nvidia-smi", "--query-gpu=memory.used,power.draw,temperature.gpu",
+    query はテスト用の差し替え口。"memory.used, power.draw, temperature.gpu, clocks.sm" の 1 行を返す関数。
+    """
+
+    _QUERY = ["nvidia-smi", "--query-gpu=memory.used,power.draw,temperature.gpu,clocks.sm",
               "--format=csv,noheader,nounits"]
 
-    def __init__(self, interval_s: float = 1.0, enabled: bool = True):
+    def __init__(self, interval_s: float = 1.0, enabled: bool = True, query=None):
         self._interval = interval_s
         self._enabled = enabled
-        self._samples: list[tuple[int, float, int]] = []
+        self._query = query or self._nvidia_smi
+        self._samples: list[tuple[int, float, int, int]] = []
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+
+    @classmethod
+    def _nvidia_smi(cls) -> str | None:
+        try:
+            return subprocess.check_output(cls._QUERY, stderr=subprocess.DEVNULL, timeout=5).decode()
+        except Exception:
+            return None
 
     def __enter__(self) -> "GpuSampler":
         if self._enabled:
@@ -242,9 +253,12 @@ class GpuSampler:
     def _loop(self) -> None:
         while not self._stop.is_set():
             try:
-                out = subprocess.check_output(self._QUERY, stderr=subprocess.DEVNULL, timeout=5).decode()
-                mem, power, temp = [x.strip() for x in out.strip().splitlines()[0].split(",")]
-                self._samples.append((int(float(mem)), float(power), int(float(temp))))
+                out = self._query()
+                if out:
+                    parts = [x.strip() for x in out.strip().splitlines()[0].split(",")]
+                    mem, power, temp = parts[0], parts[1], parts[2]
+                    clock = parts[3] if len(parts) > 3 else "0"
+                    self._samples.append((int(float(mem)), float(power), int(float(temp)), int(float(clock))))
             except Exception:
                 pass
             self._stop.wait(self._interval)
@@ -252,10 +266,11 @@ class GpuSampler:
     def summary(self) -> dict:
         if not self._samples:
             return {"vram_peak_mib": None, "power_mean_w": None, "power_max_w": None,
-                    "temp_max_c": None, "samples": 0}
-        mems, powers, temps = zip(*self._samples)
+                    "temp_max_c": None, "clock_sm_mean_mhz": None, "samples": 0}
+        mems, powers, temps, clocks = zip(*self._samples)
         return {"vram_peak_mib": max(mems), "power_mean_w": round(sum(powers) / len(powers), 1),
-                "power_max_w": max(powers), "temp_max_c": max(temps), "samples": len(self._samples)}
+                "power_max_w": max(powers), "temp_max_c": max(temps),
+                "clock_sm_mean_mhz": round(sum(clocks) / len(clocks)), "samples": len(self._samples)}
 
 
 # --------------------------------------------------------------------------- CLI

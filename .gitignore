@@ -39,3 +39,6 @@ deploy/webui/searxng/settings.yml
 # 投機デコード計測のローカル設定と、Claude Code の system prompt を含む抽出プロンプト
 experiments/2026-10-speculative-decoding/config/.env
 experiments/2026-10-speculative-decoding/scripts/data/private/
+
+# 電力リミット実験の生ログ
+experiments/2026-10-power-limit/results/raw/

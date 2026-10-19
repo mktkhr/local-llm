@@ -50,6 +50,8 @@ Ollama / KV q8_0 / NUM_PARALLEL=1 での結果。llama.cpp + Qwen3.6-35B-A3B を
 
 ---
 
+**電力リミット(2026-10)**: 短 prompt の decode は 150 W でも −6%、prefill は 150 W で −36% / 320 W で +18%。チャット用途は 150 W + MTP が電力効率最良(tok/s/W 2 倍)、Claude Code のような長文 prefill は 220 W が妥協点。詳細は [experiments/2026-10-power-limit](../experiments/2026-10-power-limit/README.md)。
+
 **投機デコード(2026-10)**: Qwen3.6-35B-A3B の MTP は全層 GPU(IQ3_XXS)で decode +26〜46%、チャット・要約・思考用途で +33〜57%。Claude Code 用途では wall time が縮まず非採用。詳細は [experiments/2026-10-speculative-decoding](../experiments/2026-10-speculative-decoding/README.md)。
 
 ---

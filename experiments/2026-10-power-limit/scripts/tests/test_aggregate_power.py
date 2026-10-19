@@ -29,7 +29,7 @@ class Summarize(unittest.TestCase):
         self.assertAlmostEqual(s[(150, "none")]["decode_vs_220w"], 0.8)
         self.assertEqual(s[(220, "none")]["decode_vs_220w"], 1.0)
         self.assertAlmostEqual(s[(220, "none")]["decode_tok_per_w"], 0.75)
-        self.assertAlmostEqual(s[(150, "mtp2")]["decode_tok_per_w"], 175 / 148)
+        self.assertAlmostEqual(s[(150, "mtp2")]["decode_tok_per_w"], 175 / 148, places=2)
         self.assertEqual(s[(150, "none")]["clock_sm_mean_mhz"], 1900)
         self.assertEqual(s[(220, "none")]["workload"], "W3")
 

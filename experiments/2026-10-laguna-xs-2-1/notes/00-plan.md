@@ -38,3 +38,9 @@
 ## 成果物
 
 - `config/model/*.args`(本実験のモデル定義。`MODEL_ARGS_DIR` で前実験の sweep.sh / cc_sweep.sh に渡す)、`scripts/`(薄いラッパ)、`results/*.csv`、README
+
+## 実施時の変更(2026-10-19)
+
+- Laguna の全層 GPU 上限は 64k(KV 約 26 KiB/token)。128k で比較する予定だったが Laguna を 65536、Qwen3.6 は現行どおり 131072 とした(「16 GB で現行どおり使えるか」が問いなので、同 ctx に揃えるより現実の制約を反映する)
+- W1 プロンプトは 64k に収まるよう `--max-bytes 230000` で抽出し直した(前実験の W1 は 85〜109k で 400 になる)
+- Phase 2 の `CLAUDE_CODE_MAX_CONTEXT_TOKENS` はサーバの `--ctx-size` から自動で渡す(cc_sweep.sh)

@@ -1,0 +1,13 @@
+task,label,pass,wall_s,exit_code,num_turns,changed_files,requests,tool_use_total,json_broken,raw_token_leak,cache_n_mean,prompt_n,cached_n,cache_hit,acceptance,draft_n,predicted_n
+M1,L-iq3xxs-none-run1,1,96,0,14,3,18,16,0,0,,127830,487655,0.792,,0,5590
+M1,L-iq3xxs-none-run2,0,98,1,18,3,31,30,0,0,,108687,745219,0.873,,0,6573
+M1,L-iq3xxs-none-run3,0,238,0,2,0,36,26,0,0,,243937,494204,0.67,,0,18275
+M1,current-C-none-run1,1,82,0,17,3,16,22,0,0,,79166,413873,0.839,,0,5590
+M1,current-C-none-run2,1,118,0,13,3,18,29,0,0,,181050,322241,0.64,,0,6842
+M1,current-C-none-run3,1,64,0,14,3,14,19,0,0,,71313,373683,0.84,,0,4103
+M2,L-iq3xxs-none-run1,1,437,1,17,1,19,14,0,0,,154453,461402,0.749,,0,39297
+M2,L-iq3xxs-none-run2,1,124,0,20,1,21,18,0,0,,167583,501761,0.75,,0,7667
+M2,L-iq3xxs-none-run3,0,121,0,14,1,16,13,0,0,,179557,344421,0.657,,0,7401
+M2,current-C-none-run1,1,35,0,14,1,11,13,0,0,,38262,314528,0.892,,0,2196
+M2,current-C-none-run2,1,37,0,18,1,12,17,0,0,,31259,358356,0.92,,0,2599
+M2,current-C-none-run3,1,42,0,15,1,13,14,0,0,,43305,391439,0.9,,0,2651

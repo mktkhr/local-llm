@@ -1,0 +1,56 @@
+[
+  {
+    "id": "W1-01",
+    "workload": "W1",
+    "bytes": 220493,
+    "source": "ccshim-c/441-req.json",
+    "n_messages": 1,
+    "n_tools": 111,
+    "system_chars": 18941
+  },
+  {
+    "id": "W1-02",
+    "workload": "W1",
+    "bytes": 225435,
+    "source": "ccshim-c/181-req.json",
+    "n_messages": 3,
+    "n_tools": 111,
+    "system_chars": 21797
+  },
+  {
+    "id": "W1-03",
+    "workload": "W1",
+    "bytes": 229007,
+    "source": "ccshim-c/625-req.json",
+    "n_messages": 7,
+    "n_tools": 111,
+    "system_chars": 21797
+  },
+  {
+    "id": "W3-01",
+    "workload": "W3",
+    "bytes": 905,
+    "source": "meetings.json",
+    "n_messages": 1,
+    "n_tools": 0,
+    "system_chars": 0
+  },
+  {
+    "id": "W3-02",
+    "workload": "W3",
+    "bytes": 1127,
+    "source": "meetings.json",
+    "n_messages": 1,
+    "n_tools": 0,
+    "system_chars": 0
+  },
+  {
+    "id": "W3-03",
+    "workload": "W3",
+    "bytes": 1935,
+    "source": "meetings.json",
+    "n_messages": 1,
+    "n_tools": 0,
+    "system_chars": 0
+  }
+]

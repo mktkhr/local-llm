@@ -45,3 +45,6 @@ experiments/2026-10-power-limit/results/raw/
 
 # Laguna 実験の生ログ
 experiments/2026-10-laguna-xs-2-1/results/raw/
+
+# Laguna 実験用に抽出し直したプロンプト(Claude Code の system prompt を含む)
+experiments/2026-10-laguna-xs-2-1/scripts/data/private/

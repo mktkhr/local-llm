@@ -16,6 +16,7 @@
 #   SPECS           config/spec/<name>.args の名前(既定は 7 設定)
 #   WORKLOADS       W1 W2 W3 W4 のうち流すもの(既定 全部)
 #   HEALTH_TIMEOUT  /health 待ちの上限秒(既定 2400。初回は GGUF 取得で 30 分超える)
+#   PRIVATE_DIR     W1〜W3 の抽出プロンプトの置き場(既定 scripts/data/private。別実験で別のサイズ上限で抽出したものを使うとき)
 #   MODEL_ARGS_DIR  model args の置き場(既定 config/model。別実験のモデル定義を使うときに絶対パスで指定)
 #   DRY_RUN         1 なら docker / curl / python3 を echo に置き換える
 #   RESUME_TS       途中で止まった掃引の TS(例 20261018-115236)。同じ JSONL に追記して再開する
@@ -43,7 +44,7 @@ think_flag_of(){ case "$1" in W4) echo "--think";; *) echo "";; esac; }
 prompt_files_of() {
   case "$1" in
     W4) ls scripts/data/w4_prompts.json ;;
-    *)  ls scripts/data/private/"$1"-*.json 2>/dev/null || true ;;
+    *)  ls "${PRIVATE_DIR:-scripts/data/private}"/"$1"-*.json 2>/dev/null || true ;;
   esac
 }
 

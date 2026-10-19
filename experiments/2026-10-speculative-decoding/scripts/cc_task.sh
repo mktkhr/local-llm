@@ -17,6 +17,7 @@
 #   SHIM_URL    実験用 ccshim(既定 http://127.0.0.1:11439)
 #   SERVER_URL  実験用 llama-server(既定 http://127.0.0.1:18081、/metrics 用)
 #   TASK_TIMEOUT  秒(既定 900)
+#   CC_MAX_CTX    Claude Code に教えるコンテキスト長(既定 131072。サーバの --ctx-size に合わせる)
 #   DRY_RUN     1 なら claude / git worktree / judge を echo に置き換える
 set -euo pipefail
 
@@ -66,7 +67,7 @@ if [ "$DRY_RUN" = "1" ]; then
 else
   ( cd "$WT" && timeout "$TASK_TIMEOUT" env \
       ANTHROPIC_BASE_URL="$SHIM_URL" ANTHROPIC_API_KEY=dummy ANTHROPIC_AUTH_TOKEN=dummy \
-      ANTHROPIC_MODEL=spec-bench API_TIMEOUT_MS=1800000 CLAUDE_CODE_MAX_CONTEXT_TOKENS=131072 \
+      ANTHROPIC_MODEL=spec-bench API_TIMEOUT_MS=1800000 CLAUDE_CODE_MAX_CONTEXT_TOKENS="${CC_MAX_CTX:-131072}" \
       claude -p "$PROMPT" --dangerously-skip-permissions --output-format json > "$ROOT/$OUT/claude.json" 2> "$ROOT/$OUT/claude.err" )
   EXIT=$?
 fi

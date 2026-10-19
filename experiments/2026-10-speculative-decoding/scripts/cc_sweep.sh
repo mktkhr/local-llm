@@ -39,7 +39,9 @@ for ((i = 1; i <= RUNS; i++)); do
   for cond in $CONDITIONS; do
     config="${cond%%:*}"; spec="${cond##*:}"
     export LLAMA_ARGS="$(cat config/common.args "${MODEL_ARGS_DIR:-config/model}/${config}.args" "config/spec/${spec}.args" | tr '\n' ' ')"
-    echo "--- run=$i $config/$spec" | tee -a "$LOG"
+    # Claude Code にはサーバの --ctx-size を教える(未知のモデル名だと 200k と誤認して溢れる)
+    export CC_MAX_CTX="$(echo "$LLAMA_ARGS" | grep -oE -- '--ctx-size [0-9]+' | awk '{print $2}')"; CC_MAX_CTX="${CC_MAX_CTX:-131072}"
+    echo "--- run=$i $config/$spec (ctx $CC_MAX_CTX)" | tee -a "$LOG"
     run $COMPOSE up -d --force-recreate
     wait_health || { run $COMPOSE down; continue; }
     # ウォームアップ(モデル切替直後の /v1/messages は切られるため)

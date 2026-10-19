@@ -1,0 +1,1 @@
+-hf poolside/Laguna-XS-2.1-GGUF:Q4_K_M --n-cpu-moe 12 --no-mmproj --ctx-size 131072 --kv-unified -ctk q8_0 -ctv q8_0 -b 2048 -ub 512 --cache-reuse 256

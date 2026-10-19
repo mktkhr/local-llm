@@ -42,3 +42,6 @@ experiments/2026-10-speculative-decoding/scripts/data/private/
 
 # 電力リミット実験の生ログ
 experiments/2026-10-power-limit/results/raw/
+
+# Laguna 実験の生ログ
+experiments/2026-10-laguna-xs-2-1/results/raw/

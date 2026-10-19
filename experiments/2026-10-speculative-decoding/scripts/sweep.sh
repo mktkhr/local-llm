@@ -16,6 +16,7 @@
 #   SPECS           config/spec/<name>.args の名前(既定は 7 設定)
 #   WORKLOADS       W1 W2 W3 W4 のうち流すもの(既定 全部)
 #   HEALTH_TIMEOUT  /health 待ちの上限秒(既定 2400。初回は GGUF 取得で 30 分超える)
+#   MODEL_ARGS_DIR  model args の置き場(既定 config/model。別実験のモデル定義を使うときに絶対パスで指定)
 #   DRY_RUN         1 なら docker / curl / python3 を echo に置き換える
 #   RESUME_TS       途中で止まった掃引の TS(例 20261018-115236)。同じ JSONL に追記して再開する
 set -euo pipefail
@@ -50,7 +51,7 @@ run() { if [ "$DRY_RUN" = "1" ]; then echo "$*"; else "$@"; fi; }
 shuffle_by() { python3 -c 'import random,sys; l=sys.stdin.read().split(); random.Random(int(sys.argv[1])).shuffle(l); print("\n".join(l))' "$1"; }
 
 [ -f config/.env ] || { echo "config/.env がありません。config/.env.example をコピーしてください" >&2; exit 1; }
-for config in $CONFIGS; do [ -f "config/model/${config}.args" ] || { echo "config/model/${config}.args がありません" >&2; exit 1; }; done
+for config in $CONFIGS; do [ -f "${MODEL_ARGS_DIR:-config/model}/${config}.args" ] || { echo "${MODEL_ARGS_DIR:-config/model}/${config}.args がありません" >&2; exit 1; }; done
 for spec in $SPECS; do [ -f "config/spec/${spec}.args" ] || { echo "config/spec/${spec}.args がありません" >&2; exit 1; }; done
 # 本番の llama-swap など、別プロセスが VRAM を掴んだままだと OOM か計測汚染になる(00-plan.md Phase 0 手順 6)
 if [ "$DRY_RUN" != "1" ]; then
@@ -123,9 +124,9 @@ for ((b = 1; b <= BLOCKS; b++)); do
   specs_b="$(rotate "$SPECS" $((b - 1)))"
   for config in $CONFIGS; do
     for spec in $specs_b; do
-      [ -f "config/model/${config}.args" ] || { echo "config/model/${config}.args がありません" >&2; exit 1; }
+      [ -f "${MODEL_ARGS_DIR:-config/model}/${config}.args" ] || { echo "${MODEL_ARGS_DIR:-config/model}/${config}.args がありません" >&2; exit 1; }
       [ -f "config/spec/${spec}.args" ] || { echo "config/spec/${spec}.args がありません" >&2; exit 1; }
-      LLAMA_ARGS="$(cat config/common.args "config/model/${config}.args" "config/spec/${spec}.args" | tr '\n' ' ')"
+      LLAMA_ARGS="$(cat config/common.args "${MODEL_ARGS_DIR:-config/model}/${config}.args" "config/spec/${spec}.args" | tr '\n' ' ')"
       echo "--- block=$b config=$config spec=$spec" | tee -a "$LOG"
       echo "    args: $LLAMA_ARGS" >> "$LOG"
       export LLAMA_ARGS

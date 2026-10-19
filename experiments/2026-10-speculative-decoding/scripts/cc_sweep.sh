@@ -9,6 +9,7 @@
 #   CONDITIONS  "config:spec" の空白区切り(既定: 現行構成 / 同一 GGUF の none / mtp2 / mtp1)
 #   RUNS        各条件 × 課題の試行数(既定 2)。run ごとに全条件を一巡させ、時間ドリフトを条件間で均す
 #   TASKS       既定 "M1 M2"
+#   MODEL_ARGS_DIR  model args の置き場(既定 config/model。別実験のモデル定義を使うときに絶対パスで指定)
 #   DRY_RUN     1 なら docker / cc_task を echo
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"; cd "$HERE/.."
@@ -37,7 +38,7 @@ echo "=== cc sweep ${TS}: conditions=[${CONDITIONS}] runs=${RUNS} tasks=[${TASKS
 for ((i = 1; i <= RUNS; i++)); do
   for cond in $CONDITIONS; do
     config="${cond%%:*}"; spec="${cond##*:}"
-    export LLAMA_ARGS="$(cat config/common.args "config/model/${config}.args" "config/spec/${spec}.args" | tr '\n' ' ')"
+    export LLAMA_ARGS="$(cat config/common.args "${MODEL_ARGS_DIR:-config/model}/${config}.args" "config/spec/${spec}.args" | tr '\n' ' ')"
     echo "--- run=$i $config/$spec" | tee -a "$LOG"
     run $COMPOSE up -d --force-recreate
     wait_health || { run $COMPOSE down; continue; }

@@ -1,0 +1,83 @@
+[
+  {
+    "id": "W1-01",
+    "workload": "W1",
+    "bytes": 224270,
+    "source": "ccshim-d/018-req.json",
+    "n_messages": 13,
+    "n_tools": 44,
+    "system_chars": 34789
+  },
+  {
+    "id": "W1-02",
+    "workload": "W1",
+    "bytes": 331499,
+    "source": "ccshim-b/149-req.json",
+    "n_messages": 3,
+    "n_tools": 137,
+    "system_chars": 27151
+  },
+  {
+    "id": "W1-03",
+    "workload": "W1",
+    "bytes": 461095,
+    "source": "ccshim-c/1572-req.json",
+    "n_messages": 103,
+    "n_tools": 33,
+    "system_chars": 47581
+  },
+  {
+    "id": "W2-01",
+    "workload": "W2",
+    "bytes": 344920,
+    "source": "ccshim-c/1234-req.json",
+    "n_messages": 23,
+    "n_tools": 124,
+    "system_chars": 19625
+  },
+  {
+    "id": "W2-02",
+    "workload": "W2",
+    "bytes": 389974,
+    "source": "ccshim-c/1425-req.json",
+    "n_messages": 51,
+    "n_tools": 33,
+    "system_chars": 43902
+  },
+  {
+    "id": "W2-03",
+    "workload": "W2",
+    "bytes": 424547,
+    "source": "ccshim-c/1490-req.json",
+    "n_messages": 73,
+    "n_tools": 33,
+    "system_chars": 45710
+  },
+  {
+    "id": "W3-01",
+    "workload": "W3",
+    "bytes": 905,
+    "source": "meetings.json",
+    "n_messages": 1,
+    "n_tools": 0,
+    "system_chars": 0
+  },
+  {
+    "id": "W3-02",
+    "workload": "W3",
+    "bytes": 1127,
+    "source": "meetings.json",
+    "n_messages": 1,
+    "n_tools": 0,
+    "system_chars": 0
+  },
+  {
+    "id": "W3-03",
+    "workload": "W3",
+    "bytes": 1935,
+    "source": "meetings.json",
+    "n_messages": 1,
+    "n_tools": 0,
+    "system_chars": 0
+  }
+]

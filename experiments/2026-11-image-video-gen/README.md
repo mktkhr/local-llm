@@ -2,7 +2,7 @@
 
 16 GB + RAM 32 GB で動く画像生成(Qwen-Image 2.1 / FLUX.2 / Z-Image / Krea 2 / HiDream-O1)と動画生成(Wan 2.2 / HunyuanVideo 1.5 / LTX-2.5 / Kandinsky 6.0 / CogVideoX)を、品質最優先で比較し、常用構成を決める。
 
-**進行中(Phase 1 画像: 9 構成まで計測。FLUX.3 Klein と FLUX.2 klein 9B は HF のライセンス承認待ち)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
+**進行中(Phase 1 画像: 10 構成まで計測。FLUX.3 Klein と FLUX.2 klein 9B は HF のライセンス承認待ち)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
 
 | 項目       | 値                                                                        |
 | ---------- | ------------------------------------------------------------------------- |
@@ -49,19 +49,20 @@
 
 ## 結果
 
-### Phase 1(途中経過: 9 構成 × 24 枚)
+### Phase 1(途中経過: 10 構成 × 24 枚)
 
-| 構成                     | 設定(テンプレート既定)                                                 | 1 枚あたり(2 回目以降 中央値) | VRAM ピーク | 平均電力 |
-| ------------------------ | ---------------------------------------------------------------------- | ----------------------------- | ----------- | -------- |
-| Z-Image Turbo bf16       | 8 steps、cfg 1、res_multistep / simple                                 | **6.0 s**                     | 15.9 GB     | 232 W    |
-| Z-Image Base bf16        | 25 steps、cfg 4、res_multistep / simple                                | 31.1 s                        | 15.9 GB     | 289 W    |
-| Qwen-Image 2.1 int8      | 25 steps、cfg 1、euler / simple、QwenImage21Cache                      | 9.0 s                         | 15.7 GB     | 277 W    |
-| Qwen-Image 2.1 bf16      | 同上(DiT 14.2 GB をオフロードしながら)                                 | 19.0 s                        | 15.8 GB     | 280 W    |
-| Krea 2 Turbo fp8         | 8 steps、cfg 1、euler / simple                                         | 9.0 s                         | 15.8 GB     | 270 W    |
-| Krea 2 Turbo int8        | 同上                                                                   | **6.0 s**                     | 15.9 GB     | 258 W    |
-| Krea 2 Turbo GGUF Q4_K_M | 同上(ComfyUI-GGUF)                                                     | 16.0 s                        | **14.0 GB** | 266 W    |
-| HiDream-O1 dev fp8       | 28 steps、cfg 1、LCM サンプラー、noise_scale 7.6、既定 2048 を 1024 に | **5.0 s**                     | **11.4 GB** | 263 W    |
-| HiDream-O1 dev bf16      | 同上(checkpoint 16 GB をオフロード)                                    | 6.0 s                         | 15.6 GB     | 252 W    |
+| 構成                        | 設定(テンプレート既定)                                                 | 1 枚あたり(2 回目以降 中央値) | VRAM ピーク | 平均電力 |
+| --------------------------- | ---------------------------------------------------------------------- | ----------------------------- | ----------- | -------- |
+| Z-Image Turbo bf16          | 8 steps、cfg 1、res_multistep / simple                                 | **6.0 s**                     | 15.9 GB     | 232 W    |
+| Z-Image Base bf16           | 25 steps、cfg 4、res_multistep / simple                                | 31.1 s                        | 15.9 GB     | 289 W    |
+| Qwen-Image 2.1 int8         | 25 steps、cfg 1、euler / simple、QwenImage21Cache                      | 9.0 s                         | 15.7 GB     | 277 W    |
+| Qwen-Image 2.1 bf16         | 同上(DiT 14.2 GB をオフロードしながら)                                 | 19.0 s                        | 15.8 GB     | 280 W    |
+| Krea 2 Turbo fp8            | 8 steps、cfg 1、euler / simple                                         | 9.0 s                         | 15.8 GB     | 270 W    |
+| Krea 2 Turbo int8           | 同上                                                                   | **6.0 s**                     | 15.9 GB     | 258 W    |
+| Krea 2 Turbo GGUF Q4_K_M    | 同上(ComfyUI-GGUF)                                                     | 16.0 s                        | **14.0 GB** | 266 W    |
+| HiDream-O1 dev fp8          | 28 steps、cfg 1、LCM サンプラー、noise_scale 7.6、既定 2048 を 1024 に | **5.0 s**                     | **11.4 GB** | 263 W    |
+| HiDream-O1 dev bf16         | 同上(checkpoint 16 GB をオフロード)                                    | 6.0 s                         | 15.6 GB     | 252 W    |
+| FLUX.2 [klein] 4B base bf16 | 20 steps、cfg 5、euler / Flux2Scheduler                                | 16.0 s                        | 15.7 GB     | 292 W    |
 
 初回(モデル読込込み)は 56〜186 s だが、この計測中は裏でモデルのダウンロードが走っていて読み込みが遅かった(後述の罠)。
 
@@ -75,6 +76,7 @@ seed 1 の比較シート([results/phase1-sheets/](results/phase1-sheets/))を�
 - **空間指示(P8 りんご 3 個とタグ「No.2」)**: Z-Image Turbo だけ **りんごを 4 個** 描いた。他は 3 個でタグも正確
 - **Krea 2 Turbo**: 文字は 3 行とも正確(見出しは 2 行に折り返し)。ラーメン屋・棚田・りんごのいずれも写実で、棚田は霧と不揃いな畦が自然。fp8 / int8 / GGUF Q4_K_M の 3 つは同一 seed で **ほぼ見分けがつかない**。int8 が最速(6 s)、GGUF は 2 GB 軽いが 2.5 倍遅い
 - **HiDream-O1 dev**: 1K なら 5 s と最速で文字も正確。ただし写実系は HDR 調で彩度が高く、ラーメン屋では看板の漢字が崩れ、顔がやや作り物っぽい。棚田も劇画調で現実感は Qwen / Krea に劣る。fp8 と bf16 は同一 seed でほぼ同一
+- **FLUX.2 [klein] 4B base**: 今回の 10 構成で最も弱い。日本語見出しは「豪の鶴車フェア」と全滅、英語も「Auturm Bookook」。棚田は畦が整いすぎて緑一色、りんごは赤の色が混ざりタグも「No´ 2」。ラーメン屋の構図だけは良い
 - **量子化(Qwen-Image 2.1 bf16 vs int8、同一 seed)**: 8 プロンプトすべてで構図・文字・色がほぼ同一。差は細部のテクスチャ程度で、シートの縮小では見分けがつかない。int8 は bf16 の **半分の時間**(9 s vs 19 s)なので、Qwen-Image 2.1 は int8 で使ってよい
 
 ## 落とし穴

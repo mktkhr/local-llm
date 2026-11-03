@@ -47,24 +47,31 @@ def summarize(rows: list[dict]) -> dict[str, dict]:
 def to_markdown(summary: dict[str, dict]) -> str:
     lines = ["| 構成 | 成功/失敗 | 初回(モデル読込込み) | 2 回目以降 中央値 | VRAM ピーク | 平均電力 | 電力制限 |",
              "| --- | --- | --- | --- | --- | --- | --- |"]
+    skipped = [label for label, s in summary.items() if s["n_ok"] == 0]
     for label, s in summary.items():
+        if s["n_ok"] == 0:
+            continue  # 1 枚も成功していない構成(ファイル未取得など)は表に出さない
         f = lambda v, u: f"{v} {u}" if v is not None else "-"  # noqa: E731
         lines.append(f"| {label} | {s['n_ok']}/{s['n_error']} | {f(s['cold_s'], 's')} | {f(s['warm_median_s'], 's')} | "
                      f"{f(s['vram_peak_mib'], 'MiB')} | {f(s['power_mean_w'], 'W')} | {f(s['power_limit_w'], 'W')} |")
-    errs = [f"- {label}: {e}" for label, s in summary.items() for e in s["errors"]]
+    if skipped:
+        lines += ["", "成功 0 件(未取得・未実行): " + ", ".join(skipped)]
+    errs = [f"- {label}: {e}" for label, s in summary.items() if s["n_ok"] for e in s["errors"]]
     if errs:
         lines += ["", "失敗:", *errs]
     return "\n".join(lines) + "\n"
 
 
-def make_sheets(rows: list[dict], img_dir: pathlib.Path, out_dir: pathlib.Path, seed: int, cell: int = 512) -> list[pathlib.Path]:
-    """プロンプトごとに 1 枚: 横にモデル構成を並べる(指定 seed)。PIL が無ければ何もしない。"""
+def make_sheets(rows: list[dict], img_dir: pathlib.Path, out_dir: pathlib.Path, seed: int, cell: int = 512,
+                labels: list[str] | None = None) -> list[pathlib.Path]:
+    """プロンプトごとに 1 枚: 横にモデル構成を並べる(指定 seed)。成功 0 件の構成は省く。PIL が無ければ何もしない。"""
     try:
         from PIL import Image, ImageDraw
     except ImportError:
         return []
     out_dir.mkdir(parents=True, exist_ok=True)
-    labels = list(dict.fromkeys(r["label"] for r in rows))
+    ok_labels = list(dict.fromkeys(r["label"] for r in rows if r["status"] == "ok"))
+    labels = [l for l in (labels or ok_labels) if l in ok_labels]
     pids = list(dict.fromkeys(r["prompt_id"] for r in rows))
     made = []
     for pid in pids:
@@ -93,6 +100,7 @@ def main(argv=None) -> int:
     ap.add_argument("--sheets", type=pathlib.Path, help="比較シートの出力先")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--cell", type=int, default=512, help="シートの 1 枚あたりの辺(px)。リポジトリに置く縮小版は 256")
+    ap.add_argument("--labels", help="シートに載せる構成をカンマ区切りで限定(順序もこの通り)")
     ap.add_argument("--md", type=pathlib.Path, help="Markdown 表の出力先(省略時は標準出力)")
     args = ap.parse_args(argv)
     rows = load_rows(args.runs)
@@ -102,7 +110,8 @@ def main(argv=None) -> int:
     else:
         print(md)
     if args.img and args.sheets:
-        for p in make_sheets(rows, args.img, args.sheets, args.seed, cell=args.cell):
+        for p in make_sheets(rows, args.img, args.sheets, args.seed, cell=args.cell,
+                             labels=args.labels.split(",") if args.labels else None):
             print(p)
     return 0
 

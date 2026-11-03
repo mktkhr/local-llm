@@ -52,3 +52,13 @@ class Sheets(unittest.TestCase):
             self.assertEqual(sheet.size, (128, 64 + 24))
             self.assertGreater(sheet.getpixel((32, 24 + 32))[0], 240)  # 左は赤(JPEG なので誤差あり)
             self.assertGreater(sheet.getpixel((96, 24 + 32))[2], 240)  # 右は青
+
+
+class Markdown(unittest.TestCase):
+    def test_labels_without_success_are_listed_not_tabulated(self):
+        from aggregate_phase1 import to_markdown
+        rows = [row("a", "P1", 1, 1.0, 1), row("b", "P1", 1, 0, None, status="error")]
+        md = to_markdown(summarize(rows))
+        self.assertIn("| a |", md)
+        self.assertNotIn("| b |", md)
+        self.assertIn("成功 0 件(未取得・未実行): b", md)

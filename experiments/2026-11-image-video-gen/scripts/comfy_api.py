@@ -57,7 +57,8 @@ def _json(url: str, data: dict | None = None, timeout: float = 60):
                                  headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as res:
-            return json.loads(res.read())
+            body = res.read()
+            return json.loads(body) if body.strip() else None  # /free などは空ボディを返す
     except urllib.error.HTTPError as e:  # ComfyUI は検証エラーを 400 + JSON で返す
         raise RuntimeError(f"HTTP {e.code}: {e.read().decode(errors='replace')[:1500]}") from None
 

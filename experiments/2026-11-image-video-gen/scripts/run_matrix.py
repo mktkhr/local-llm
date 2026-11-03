@@ -137,7 +137,9 @@ def main(argv=None) -> int:
                     except Exception as e:  # noqa: BLE001
                         status, error = "error", repr(e)[:1500]
                 files = outputs_of(entry) if entry else []
-                saved = [str(download(url, f, args.download / m["label"])) for f in files]
+                saved = [str(download(url, f, args.download / m["label"],
+                                      name=f"{p['id']}_s{seed}{'' if j == 0 else f'-{j}'}{pathlib.Path(f['filename']).suffix}"))
+                         for j, f in enumerate(files)]
                 row = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "label": m["label"], "template": m["template"],
                        "sets": m.get("sets") or [], "gguf": m.get("gguf"), "width": m.get("width"), "height": m.get("height"),
                        "steps": m.get("steps"), "prompt_id": p["id"], "seed": seed, "status": status, "error": error,

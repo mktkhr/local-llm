@@ -70,8 +70,8 @@ def make_sheets(rows: list[dict], img_dir: pathlib.Path, out_dir: pathlib.Path, 
     for pid in pids:
         cells = []
         for label in labels:
-            p = img_dir / label / f"{pid}_s{seed}.png"
-            cells.append((label, p if p.exists() else None))
+            hits = sorted((img_dir / label).glob(f"{pid}_s{seed}.png")) or sorted((img_dir / label).glob(f"{pid}_s{seed}_*.png"))
+            cells.append((label, hits[0] if hits else None))  # ComfyUI が付ける連番(_00001_)の有無どちらでも
         sheet = Image.new("RGB", (cell * len(cells), cell + 24), "white")
         d = ImageDraw.Draw(sheet)
         for i, (label, p) in enumerate(cells):

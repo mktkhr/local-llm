@@ -30,3 +30,25 @@ class Summarize(unittest.TestCase):
     def test_labels_keep_input_order(self):
         rows = [row("z", "P1", 1, 1.0, 1), row("a", "P1", 1, 1.0, 1)]
         self.assertEqual(list(summarize(rows)), ["z", "a"])
+
+
+class Sheets(unittest.TestCase):
+    def test_sheet_finds_images_with_or_without_comfy_counter_suffix(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("PIL なし")
+        from aggregate_phase1 import make_sheets
+        with tempfile.TemporaryDirectory() as d:
+            d = pathlib.Path(d)
+            (d / "img" / "a").mkdir(parents=True)
+            (d / "img" / "b").mkdir(parents=True)
+            Image.new("RGB", (64, 64), "red").save(d / "img" / "a" / "P1_s1_00001_.png")  # ComfyUI の連番付き
+            Image.new("RGB", (64, 64), "blue").save(d / "img" / "b" / "P1_s1.png")  # 決め打ち名
+            rows = [row("a", "P1", 1, 1.0, 1), row("b", "P1", 1, 1.0, 1)]
+            made = make_sheets(rows, d / "img", d / "sheets", seed=1, cell=64)
+            self.assertEqual([p.name for p in made], ["P1_s1.jpg"])
+            sheet = Image.open(made[0]).convert("RGB")
+            self.assertEqual(sheet.size, (128, 64 + 24))
+            self.assertGreater(sheet.getpixel((32, 24 + 32))[0], 240)  # 左は赤(JPEG なので誤差あり)
+            self.assertGreater(sheet.getpixel((96, 24 + 32))[2], 240)  # 右は青

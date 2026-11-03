@@ -90,10 +90,11 @@ def outputs_of(entry: dict) -> list[dict]:
     return out
 
 
-def download(url: str, f: dict, dest_dir: pathlib.Path) -> pathlib.Path:
+def download(url: str, f: dict, dest_dir: pathlib.Path, name: str | None = None) -> pathlib.Path:
+    """出力ファイルを取得する。name を与えると ComfyUI の連番付きファイル名ではなくその名前で保存する。"""
     dest_dir.mkdir(parents=True, exist_ok=True)
     q = urllib.parse.urlencode({"filename": f["filename"], "subfolder": f.get("subfolder", ""), "type": f.get("type", "output")})
-    dest = dest_dir / f["filename"]
+    dest = dest_dir / (name or f["filename"])
     with urllib.request.urlopen(f"{url}/view?{q}", timeout=300) as res, dest.open("wb") as w:
         w.write(res.read())
     return dest

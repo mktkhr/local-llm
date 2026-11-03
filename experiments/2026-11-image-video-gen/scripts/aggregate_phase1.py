@@ -92,6 +92,7 @@ def main(argv=None) -> int:
     ap.add_argument("--img", type=pathlib.Path, help="run_matrix --download のディレクトリ")
     ap.add_argument("--sheets", type=pathlib.Path, help="比較シートの出力先")
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--cell", type=int, default=512, help="シートの 1 枚あたりの辺(px)。リポジトリに置く縮小版は 256")
     ap.add_argument("--md", type=pathlib.Path, help="Markdown 表の出力先(省略時は標準出力)")
     args = ap.parse_args(argv)
     rows = load_rows(args.runs)
@@ -101,7 +102,7 @@ def main(argv=None) -> int:
     else:
         print(md)
     if args.img and args.sheets:
-        for p in make_sheets(rows, args.img, args.sheets, args.seed):
+        for p in make_sheets(rows, args.img, args.sheets, args.seed, cell=args.cell):
             print(p)
     return 0
 

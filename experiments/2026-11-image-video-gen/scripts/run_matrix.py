@@ -118,6 +118,11 @@ def main(argv=None) -> int:
     total = len(models) * len(prompts) * len(seeds)
     i = 0
     for m in models:
+        miss = missing_files(build(m, info, "check", 0, "check"), info)
+        if miss:
+            print(f"skip {m['label']}: ファイルが無い: {', '.join(miss)}", flush=True)
+            i += len(prompts) * len(seeds)
+            continue
         freed = False
         for p in prompts:
             for seed in seeds:

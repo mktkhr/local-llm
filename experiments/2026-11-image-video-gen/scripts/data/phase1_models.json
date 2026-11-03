@@ -17,7 +17,7 @@
    "sets": ["UNETLoader.unet_name=flux-2-klein-4b.safetensors"]},
   {"label": "krea2-turbo-fp8", "template": "image_krea2_turbo_t2i", "sets": ["30:24:value=false"], "note": "prompt enhancer off"},
   {"label": "krea2-turbo-int8", "template": "image_krea2_turbo_t2i",
-   "sets": ["30:24:value=false", "UNETLoader.unet_name=krea2_turbo_int8.safetensors"]},
+   "sets": ["30:24:value=false", "UNETLoader.unet_name=krea2_turbo_int8_convrot.safetensors"]},
   {"label": "krea2-turbo-gguf-q4km", "template": "image_krea2_turbo_t2i", "sets": ["30:24:value=false"],
    "gguf": "krea2-turbo-Q4_K_M.gguf"},
   {"label": "hidream-o1-dev-fp8", "template": "image_hidream_o1_dev", "sets": ["154:value=false"],

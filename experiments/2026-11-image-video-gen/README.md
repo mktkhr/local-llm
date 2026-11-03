@@ -94,6 +94,17 @@ seed 1 の比較シート([results/phase1-sheets/](results/phase1-sheets/))を�
 - **FLUX.2 [klein] 4B base**: 今回の 10 構成で最も弱い。日本語見出しは「豪の鶴車フェア」と全滅、英語も「Auturm Bookook」。棚田は畦が整いすぎて緑一色、りんごは赤の色が混ざりタグも「No´ 2」。ラーメン屋の構図だけは良い
 - **量子化(Qwen-Image 2.1 bf16 vs int8、同一 seed)**: 8 プロンプトすべてで構図・文字・色がほぼ同一。差は細部のテクスチャ程度で、シートの縮小では見分けがつかない。int8 は bf16 の **半分の時間**(9 s vs 19 s)なので、Qwen-Image 2.1 は int8 で使ってよい
 
+### Phase 1: 2K(2048×2048、上位 4 構成 × P1〜P4、seed 1)
+
+| 構成(2K)            | 1 枚(2 回目以降) | VRAM ピーク | 所見                                                                                       |
+| ------------------- | ---------------- | ----------- | ------------------------------------------------------------------------------------------ |
+| Krea 2 Turbo int8   | **33 s**         | 15.9 GB     | 文字正確。ラーメン屋・棚田とも 1K より描き込みが増え、霧の棚田は 4 構成で最も雰囲気がある  |
+| Qwen-Image 2.1 int8 | 60 s             | 15.8 GB     | 文字正確(明朝系の書体になる)。等倍で見ると肌の毛穴・産毛まで自然で、写実のディテールは最良 |
+| HiDream-O1 dev fp8  | 19 s             | **9.4 GB**  | 文字正確だが看板の漢字は崩れる。彩度の高い HDR 調は 2K でも同じ                            |
+| Z-Image Base bf16   | 169 s            | 15.9 GB     | 2K では英語副題が「Book                                                                    | Fair」と崩れ余計な記号も入る。棚田は 2K でも畦が整いすぎ。16 GB では時間も見合わない |
+
+1K → 2K で時間は 3.7〜5.5 倍(画素 4 倍)。VRAM はどれも 16 GB に収まる(HiDream は余裕あり)。生データは `results/raw/phase1/runs-2k.jsonl`、集計は `results/phase1-2k-summary.md`。
+
 ## 落とし穴
 
 | 罠                                     | 症状                                                                                                                                             | 対処                                                                                                                                                        |
@@ -106,7 +117,6 @@ seed 1 の比較シート([results/phase1-sheets/](results/phase1-sheets/))を�
 ## 次
 
 - FLUX.3 Klein(distilled / base)と FLUX.2 klein 9B fp8 は HF の gated repo(`black-forest-labs/flux-3-image-klein-comfy`、`black-forest-labs/FLUX.2-klein-base-9b-fp8`)。ライセンス承認済みの HF トークンを GPU 機に置いてから取得し、同じ行列で回す。FLUX.2 klein 4B base は取得済みで実行待ち
-- 2K(2048×2048)を上位 4 構成(Qwen int8 / Krea int8 / Z-Image Base / HiDream fp8)× 4 プロンプトで計測中。結果は追記する
 - Z-Image Base にネガティブプロンプト(text, watermark)を入れて「頼んでいない文字」が消えるか 1 回だけ試す
 - Krea 2 のプロンプト拡張(同梱の Qwen3-VL 4B で書き換え)を ON にしたときの変化を最良モデルで 1 回見る
 - 220 W で各構成 1 枚ずつ時間を測り直して速度表を確定する

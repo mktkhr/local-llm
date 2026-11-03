@@ -16,12 +16,17 @@ import json
 import pathlib
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "2026-10-speculative-decoding" / "scripts"))
 from spec_bench import GpuSampler  # noqa: E402
+from tpl2api import apply_overrides, swap_unet_loader_gguf, to_api  # noqa: E402
+
+TEMPLATES_DIR = pathlib.Path(__file__).resolve().parent / "data" / "templates"
+OBJECT_INFO_CACHE = pathlib.Path(__file__).resolve().parents[1] / "results" / "raw" / "object_info.json"
 
 
 def graph_z_image_turbo(prompt: str, seed: int, width: int, height: int, steps: int = 8,
@@ -50,8 +55,11 @@ GRAPHS = {"z-image-turbo": graph_z_image_turbo}
 def _json(url: str, data: dict | None = None, timeout: float = 60):
     req = urllib.request.Request(url, data=json.dumps(data).encode() if data is not None else None,
                                  headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as res:
-        return json.loads(res.read())
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as res:
+            return json.loads(res.read())
+    except urllib.error.HTTPError as e:  # ComfyUI は検証エラーを 400 + JSON で返す
+        raise RuntimeError(f"HTTP {e.code}: {e.read().decode(errors='replace')[:1500]}") from None
 
 
 def run(url: str, graph: dict, timeout: float = 1800) -> tuple[dict, float]:
@@ -90,14 +98,39 @@ def download(url: str, f: dict, dest_dir: pathlib.Path) -> pathlib.Path:
     return dest
 
 
+def object_info(url: str, path: pathlib.Path | None = None, refresh: bool = False) -> dict:
+    """サーバの /object_info(ノード入力定義)。results/raw にキャッシュする。"""
+    path = path or OBJECT_INFO_CACHE
+    if path.exists() and not refresh:
+        return json.loads(path.read_text())
+    info = _json(url + "/object_info", timeout=120)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(info, ensure_ascii=False))
+    return info
+
+
+def graph_from_template(name: str, info: dict, prompt: str, seed: int, width: int | None, height: int | None,
+                        steps: int | None, sets: list[str]) -> dict:
+    tpl = TEMPLATES_DIR / (name if name.endswith(".json") else name + ".json")
+    api = to_api(json.loads(tpl.read_text()), info, sets=sets)
+    return apply_overrides(api, prompt=prompt, seed=seed, width=width, height=height, steps=steps)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--url", default="http://127.0.0.1:8188")
-    ap.add_argument("--graph", choices=sorted(GRAPHS), required=True)
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--graph", choices=sorted(GRAPHS), help="手書きグラフ")
+    g.add_argument("--template", help="data/templates/ 内の公式テンプレート名(拡張子不要)")
+    ap.add_argument("--set", action="append", default=[], help="テンプレートの値を上書き: NodeType.input=value / id:input=value")
+    ap.add_argument("--object-info", type=pathlib.Path, help="/object_info のキャッシュ先(既定 results/raw/object_info.json)")
+    ap.add_argument("--refresh-object-info", action="store_true")
+    ap.add_argument("--gguf", help="テンプレートの UNETLoader を UnetLoaderGGUF(このファイル)に置き換える")
+    ap.add_argument("--dump-graph", action="store_true", help="API グラフを表示して終了(実行しない)")
     ap.add_argument("--prompt", required=True)
     ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--width", type=int, default=1024)
-    ap.add_argument("--height", type=int, default=1024)
+    ap.add_argument("--width", type=int, default=None, help="省略時: 手書きグラフは 1024、テンプレートはその既定値")
+    ap.add_argument("--height", type=int, default=None)
     ap.add_argument("--steps", type=int, default=None)
     ap.add_argument("--label", default="")
     ap.add_argument("--out", type=pathlib.Path, help="JSONL の追記先")
@@ -105,11 +138,21 @@ def main(argv=None) -> int:
     ap.add_argument("--nvidia-smi", type=int, default=1)
     args = ap.parse_args(argv)
 
-    kwargs = {"prompt": args.prompt, "seed": args.seed, "width": args.width, "height": args.height}
-    if args.steps is not None:
-        kwargs["steps"] = args.steps
-    graph = GRAPHS[args.graph](**kwargs)
     url = args.url.rstrip("/")
+    if args.graph:
+        kwargs = {"prompt": args.prompt, "seed": args.seed, "width": args.width or 1024, "height": args.height or 1024}
+        if args.steps is not None:
+            kwargs["steps"] = args.steps
+        graph = GRAPHS[args.graph](**kwargs)
+    else:
+        info = object_info(url, args.object_info, args.refresh_object_info)
+        graph = graph_from_template(args.template, info, args.prompt, args.seed, args.width, args.height, args.steps, args.set)
+        if args.gguf:
+            swap_unet_loader_gguf(graph, args.gguf)
+    if args.dump_graph:
+        json.dump(graph, sys.stdout, ensure_ascii=False, indent=1)
+        print()
+        return 0
     status, error, entry, wall = "ok", "", None, None
     with GpuSampler(enabled=bool(args.nvidia_smi)) as gpu:
         try:
@@ -118,7 +161,8 @@ def main(argv=None) -> int:
             status, error = "error", repr(e)[:800]
     files = outputs_of(entry) if entry else []
     saved = [str(download(url, f, args.download)) for f in files] if args.download and files else []
-    row = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "label": args.label, "graph": args.graph, "prompt": args.prompt,
+    row = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "label": args.label, "graph": args.graph or args.template,
+           "set": args.set, "gguf": args.gguf, "prompt": args.prompt,
            "seed": args.seed, "width": args.width, "height": args.height, "steps": args.steps,
            "status": status, "error": error, "wall_s": round(wall, 2) if wall else None,
            "outputs": [f["filename"] for f in files], "saved": saved, "gpu": gpu.summary()}

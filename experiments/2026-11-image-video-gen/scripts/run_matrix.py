@@ -131,8 +131,8 @@ def main(argv=None) -> int:
                 key = (m["label"], p["id"], seed)
                 if key in done:
                     continue
-                if not freed:
-                    free_models(url)
+                if not freed or m.get("free_each"):
+                    free_models(url)  # free_each: VRAM に収まらないモデルは 1 件ごとに掃除しないと "VRAM grow failed" になる
                     freed = True
                 prefix = f"{m['label']}/{p['id']}_s{seed}"
                 graph = build(m, info, p["prompt"], seed, prefix)

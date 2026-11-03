@@ -8,14 +8,18 @@
   {
     "label": "wan22-14b-t2v-fp8",
     "template": "video_wan2_2_14B_t2v",
-    "sets": ["EmptyHunyuanLatentVideo.width=832", "EmptyHunyuanLatentVideo.height=480"],
+    "sets": [
+      "EmptyHunyuanLatentVideo.width=832",
+      "EmptyHunyuanLatentVideo.height=480"
+    ],
     "note": "high/low noise fp8 14.3 GB × 2 をオフロードしながら。既定 640×640 を 832×480 に"
   },
   {
     "label": "hunyuan15-t2v-720p-fp16",
     "template": "video_hunyuan_video_1.5_720p_t2v",
     "sets": [],
-    "note": "既定(1280×720、121 フレーム、20 steps、cfg 6、shift 7)。超解像ブロックはテンプレートでバイパス済み"
+    "note": "既定(1280×720、121 フレーム、20 steps、cfg 6、shift 7)。超解像ブロックはテンプレートでバイパス済み",
+    "free_each": true
   },
   {
     "label": "ltx25-t2v-int8",

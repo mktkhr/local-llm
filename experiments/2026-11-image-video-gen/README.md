@@ -2,7 +2,7 @@
 
 16 GB + RAM 32 GB で動く画像生成(Qwen-Image 2.1 / FLUX.2 / Z-Image / Krea 2 / HiDream-O1)と動画生成(Wan 2.2 / HunyuanVideo 1.5 / LTX-2.5 / Kandinsky 6.0 / CogVideoX)を、品質最優先で比較し、常用構成を決める。
 
-**進行中(Phase 1 画像の計測と採点まで完了。FLUX.3 Klein と FLUX.2 klein 9B は gated repo のためスキップ。次は 220 W の時間計測と Phase 2 動画)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
+**進行中(Phase 1 画像の計測と採点まで完了。FLUX.3 Klein と FLUX.2 klein 9B は gated repo のためスキップ。次は Phase 2 動画)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
 
 | 項目       | 値                                                                        |
 | ---------- | ------------------------------------------------------------------------- |
@@ -58,7 +58,7 @@
 
 - 実行は ComfyUI 公式テンプレート(`scripts/data/templates/`、MIT)を `scripts/tpl2api.py` で API 形式に変換し、`scripts/run_matrix.py` で構成 × 8 プロンプト × 3 seed(1, 2, 3)を回す。変換の正しさは、手書きグラフとテンプレート経由で同一 seed の出力が **ピクセル単位で一致** することで確認した(PNG の IDAT ハッシュ一致)
 - 公式テンプレートの推奨設定をそのまま使う。変えるのはモデルファイル名・プロンプト・seed・解像度(1024×1024 相当)だけ。テンプレート同梱のプロンプト拡張(LLM による書き換え)は全構成で切る
-- 電力制限は 320 W のまま(品質は seed 固定で決定的なので電力に依らない。時間の比較表は後で 220 W で測り直す)
+- 電力制限は 320 W のまま(品質は seed 固定で決定的なので電力に依らない。時間の比較表も 320 W のまま。220 W での再計測はしないと決めた)
 - 構成の一覧は `scripts/data/phase1_models.json`、生データは `results/raw/phase1/runs.jsonl`(commit 対象外)、集計は `results/phase1-summary.md`、seed 1 の比較シートは `results/phase1-sheets/`
 
 ## 結果
@@ -119,7 +119,6 @@ seed 1 の比較シート([results/phase1-sheets/](results/phase1-sheets/))を�
 - FLUX.3 Klein(distilled / base)と FLUX.2 klein 9B fp8 は HF の gated repo(`black-forest-labs/flux-3-image-klein-comfy`、`black-forest-labs/FLUX.2-klein-base-9b-fp8`)。ライセンス承認済みの HF トークンを GPU 機に置いてから取得し、同じ行列で回す。FLUX.2 klein 4B base は取得済みで実行待ち
 - Z-Image Base にネガティブプロンプト(text, watermark)を入れて「頼んでいない文字」が消えるか 1 回だけ試す
 - Krea 2 のプロンプト拡張(同梱の Qwen3-VL 4B で書き換え)を ON にしたときの変化を最良モデルで 1 回見る
-- 220 W で各構成 1 枚ずつ時間を測り直して速度表を確定する
 - Phase 2(動画)の T2V / I2V、Phase 3(画像 → 動画)
 
 ## ファイル

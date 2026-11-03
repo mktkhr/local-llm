@@ -1,0 +1,42 @@
+[
+  {
+    "id": "P1-text-poster",
+    "axis": "文字(日本語 + 英語)",
+    "prompt": "A clean event poster on a cork board. Large bold Japanese headline \"秋の読書フェア\" at the top, English subtitle \"Autumn Book Fair 2026\" below it, and a small line \"10/18 (土) 〜 11/3 (月・祝)\" at the bottom. Flat vector illustration of a stack of books and a maple leaf, warm orange and cream palette, no other text."
+  },
+  {
+    "id": "P2-complex-scene",
+    "axis": "複雑な構図(複数人物・関係)",
+    "prompt": "Three people in a small ramen shop at night: an elderly cook in a white headband ladling broth behind the counter on the left, a young woman in a yellow raincoat eating with chopsticks in the center, and a salaryman in a gray suit reading a newspaper on the right stool. Steam rising, red lanterns, wet street visible through the window, cinematic 35mm, natural color."
+  },
+  {
+    "id": "P3-portrait",
+    "axis": "写実ポートレート",
+    "prompt": "Photorealistic close-up portrait of a middle-aged Japanese fisherman with weathered skin and a short gray beard, wearing an orange waterproof jacket, early morning overcast light on a pier, shallow depth of field, 85mm lens, skin pores and water droplets visible, no retouching look."
+  },
+  {
+    "id": "P4-landscape",
+    "axis": "風景・光",
+    "prompt": "Wide landscape of terraced rice fields in Kyushu just after rain, low clouds hugging the mountains, golden late-afternoon light breaking through, a single farmer walking on a ridge path, mirror-like water reflections, ultra detailed, 24mm."
+  },
+  {
+    "id": "P5-product",
+    "axis": "商品写真・質感",
+    "prompt": "Studio product photo of a hand-thrown ceramic coffee mug with a matte celadon glaze, placed on a raw oak board, a few roasted coffee beans scattered, soft diffused window light from the left, subtle shadow, neutral gray seamless background, commercial catalog quality."
+  },
+  {
+    "id": "P6-illustration",
+    "axis": "イラスト・スタイル",
+    "prompt": "Children's book illustration, gouache texture: a round red fox wearing a tiny knitted scarf reading a map under a street lamp in a snowy European old town at night, warm window lights, visible brush strokes, limited palette of navy, cream, and coral."
+  },
+  {
+    "id": "P7-architecture",
+    "axis": "建築・直線・パース",
+    "prompt": "Architectural photograph of a minimalist concrete house by the sea with a cantilevered roof, floor-to-ceiling glass, a long infinity pool reflecting the sky, straight clean lines, two-point perspective, overcast soft light, no people, high resolution."
+  },
+  {
+    "id": "P8-spatial",
+    "axis": "空間指示(配置・数・色)",
+    "prompt": "On a white table: exactly three apples in a row from left to right colored green, red, and yellow; behind them one blue ceramic bowl; to the right of the bowl a folded gray linen napkin; a small handwritten paper tag in front of the red apple that says \"No.2\". Top-down 45 degree view, soft daylight."
+  }
+]

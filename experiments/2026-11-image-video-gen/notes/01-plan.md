@@ -37,6 +37,7 @@ RTX 4080 SUPER 16 GB + RAM 32 GB で、**生成品質を最優先**に画像生�
 
 - 実行は ComfyUI 公式テンプレート(`scripts/data/templates/`、MIT)を `scripts/tpl2api.py` で API 形式に変換して使う。公式の推奨設定(サンプラー・ステップ・CFG・shift)をそのまま採用し、変えるのはモデルファイル名・プロンプト・seed・解像度だけ
 - 対象(`scripts/data/phase1_models.json`): Z-Image Turbo(bf16)/ Z-Image Base(bf16)/ Qwen-Image 2.1(公式 int8 と bf16)/ FLUX.3 Image Klein(distilled int8・bf16、base bf16)/ FLUX.2 [klein] 9B(fp8)と 4B(bf16)/ Krea 2 Turbo(fp8 / int8 / GGUF Q4_K_M)/ HiDream-O1-Image dev(fp8 / bf16)。FLUX.2 [dev] は Q2_K + fp4 エンコーダで 1 プロンプトだけ試し、載るか・品質がどうかを記録して打ち切る
+- FLUX.3 Image Klein と FLUX.2 [klein] 9B は HF の gated repo(ライセンス同意 + トークンが要る)。2026-11-03 の判断で **一旦スキップ**。Qwen-Image 2.1 / Krea 2 / Z-Image で本命が揃ったため。後で入れるなら `black-forest-labs/flux-3-image-klein-comfy` と `black-forest-labs/FLUX.2-klein-base-9b-fp8` に同意し、トークンを GPU 機の `~/.hf_token` に置いて `scripts/data/phase1_models.json` の構成をそのまま回す
 - プロンプト拡張(テンプレート同梱の LLM によるプロンプト書き換え。Qwen-Image 2.1・FLUX.3・Krea 2・HiDream にある)は全モデルで **切って** 比較する。同じ文で比べるため。効果は最良モデルで別途 1 回だけ見る
 - 量子化の比較は Qwen-Image 2.1(bf16 vs int8)と Krea 2(fp8 vs int8 vs GGUF Q4)、FLUX.3 Klein(bf16 vs int8)で行う(同一シード)
 - 編集は Qwen-Image 2.1 と klein 9B で同じ指示(背景差し替え・文字修正・物体追加)

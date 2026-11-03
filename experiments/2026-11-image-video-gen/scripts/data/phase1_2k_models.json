@@ -1,0 +1,6 @@
+[
+  {"label": "2k-qwen21-int8", "template": "image_qwen_image_2_1_t2i", "sets": ["ResolutionSelector.megapixels=4", "TextEncodeQwenImage21.resolution=2048"], "note": "2048×2048"},
+  {"label": "2k-krea2-turbo-int8", "template": "image_krea2_turbo_t2i", "sets": ["30:24:value=false", "UNETLoader.unet_name=krea2_turbo_int8_convrot.safetensors", "ResolutionSelector.megapixels=4"], "note": "2048×2048"},
+  {"label": "2k-z-image-base-bf16", "template": "image_z_image", "sets": ["ResolutionSelector.megapixels=4"], "note": "2048×2048"},
+  {"label": "2k-hidream-o1-dev-fp8", "template": "image_hidream_o1_dev", "sets": ["154:value=false"], "note": "テンプレート既定の 2048×2048"}
+]

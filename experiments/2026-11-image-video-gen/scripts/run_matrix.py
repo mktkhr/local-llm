@@ -97,6 +97,7 @@ def main(argv=None) -> int:
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--refresh-object-info", action="store_true")
     ap.add_argument("--nvidia-smi", type=int, default=1)
+    ap.add_argument("--timeout", type=float, default=1800, help="1 件の完了待ちの上限秒。動画は 1 本 1 時間を超えることがある")
     args = ap.parse_args(argv)
 
     url = args.url.rstrip("/")
@@ -138,7 +139,7 @@ def main(argv=None) -> int:
                 status, error, entry, wall = "ok", "", None, None
                 with GpuSampler(enabled=bool(args.nvidia_smi)) as gpu:
                     try:
-                        entry, wall = run(url, graph)
+                        entry, wall = run(url, graph, timeout=args.timeout)
                     except Exception as e:  # noqa: BLE001
                         status, error = "error", repr(e)[:1500]
                 files = outputs_of(entry) if entry else []

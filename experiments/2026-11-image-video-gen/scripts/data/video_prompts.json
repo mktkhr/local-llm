@@ -1,0 +1,22 @@
+[
+  {
+    "id": "V1-human-motion",
+    "axis": "人物の動き(手・顔・歩行)",
+    "prompt": "A young woman in a beige trench coat walks toward the camera along a rainy Tokyo side street at dusk, holding a clear umbrella. She lowers the umbrella, smiles, and waves with her right hand. Neon signs reflect on the wet pavement. Natural handheld camera, shallow depth of field, photorealistic."
+  },
+  {
+    "id": "V2-camera-move",
+    "axis": "カメラワーク(ドリー・パン)",
+    "prompt": "Slow cinematic dolly-in through a wooden Japanese tea house toward an open shoji door. Beyond the door, a moss garden with a stone lantern and falling maple leaves. Soft morning light, dust particles in the air, steady camera movement, 35mm film look."
+  },
+  {
+    "id": "V3-physics",
+    "axis": "物理(液体・布)",
+    "prompt": "Close-up of hot tea being poured from a cast-iron teapot into a white ceramic cup on a wooden table. Steam rises, the liquid swirls and settles, and a light linen curtain in the background sways in the breeze. Macro lens, realistic fluid motion, soft natural light."
+  },
+  {
+    "id": "V4-text-sign",
+    "axis": "文字看板(動いても崩れないか)",
+    "prompt": "A red neon sign reading \"OPEN 24H\" above a small ramen shop at night flickers on, then a cook in a white uniform steps out through the noren curtain and looks up at it. Camera slowly pans right across the storefront. Rain-soaked street, cinematic lighting."
+  }
+]

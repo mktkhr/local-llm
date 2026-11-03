@@ -1,0 +1,11 @@
+[
+  {
+    "label": "wan22-14b-t2v-fp8-720p",
+    "template": "video_wan2_2_14B_t2v",
+    "sets": [
+      "EmptyHunyuanLatentVideo.width=1280",
+      "EmptyHunyuanLatentVideo.height=720"
+    ],
+    "note": "14B fp8 を 1280×720 で。480p では解像度不足との判断(2026-11-03)"
+  }
+]

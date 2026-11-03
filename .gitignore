@@ -48,3 +48,6 @@ experiments/2026-10-laguna-xs-2-1/results/raw/
 
 # Laguna 実験用に抽出し直したプロンプト(Claude Code の system prompt を含む)
 experiments/2026-10-laguna-xs-2-1/scripts/data/private/
+
+# 画像・動画生成の生成物
+experiments/2026-11-image-video-gen/results/raw/

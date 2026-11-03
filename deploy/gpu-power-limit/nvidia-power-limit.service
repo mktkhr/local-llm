@@ -1,0 +1,14 @@
+[Unit]
+Description=Set NVIDIA GPU power limit (persisted across reboots)
+After=nvidia-persistenced.service multi-user.target
+Wants=nvidia-persistenced.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=POWER_LIMIT_W=280
+ExecStart=/usr/bin/nvidia-smi -pm 1
+ExecStart=/bin/sh -c '/usr/bin/nvidia-smi -pl "$POWER_LIMIT_W"'
+
+[Install]
+WantedBy=multi-user.target

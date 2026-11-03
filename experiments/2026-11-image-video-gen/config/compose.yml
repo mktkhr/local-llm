@@ -1,0 +1,35 @@
+# ComfyUI(yanwk/comfyui-boot の slim イメージ)。モデル・カスタムノード・出力はホストに置き、
+# コンテナは使い捨てにする。16 GB GPU 1 枚なので LLM 系(deploy/llama-swap)とは同時に動かさない。
+#
+# 初回: cp .env.example .env して COMFY_DATA を確認 → docker compose up -d
+# 公開: LAN 全体に 8188 を無認証で出す(llama-swap と同じ扱い)。外部公開は deploy/auth-gate を噛ませる。
+services:
+  comfyui:
+    image: ${COMFY_IMAGE:-yanwk/comfyui-boot:cu130-slim-v2}
+    container_name: comfyui
+    restart: unless-stopped
+    gpus: all
+    ports:
+      - "${COMFY_PORT:-8188}:8188"
+    environment:
+      # ComfyUI の起動引数。低 VRAM 時は "--lowvram" や "--reserve-vram 1" を足す
+      CLI_ARGS: ${CLI_ARGS:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - ${COMFY_DATA}/storage-cache/dot-cache:/root/.cache
+      - ${COMFY_DATA}/storage-cache/dot-config:/root/.config
+      - ${COMFY_DATA}/storage-nodes/dot-local:/root/.local
+      - ${COMFY_DATA}/storage-nodes/custom_nodes:/root/ComfyUI/custom_nodes
+      - ${COMFY_DATA}/storage-models/models:/root/ComfyUI/models
+      - ${COMFY_DATA}/storage-models/hf-hub:/root/.cache/huggingface/hub
+      - ${COMFY_DATA}/storage-models/torch-hub:/root/.cache/torch/hub
+      - ${COMFY_DATA}/storage-user/input:/root/ComfyUI/input
+      - ${COMFY_DATA}/storage-user/output:/root/ComfyUI/output
+      - ${COMFY_DATA}/storage-user/user-profile:/root/ComfyUI/user
+      - ${COMFY_DATA}/storage-user/user-scripts:/root/user-scripts
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8188'"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 120s

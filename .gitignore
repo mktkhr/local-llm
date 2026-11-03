@@ -51,3 +51,6 @@ experiments/2026-10-laguna-xs-2-1/scripts/data/private/
 
 # 画像・動画生成の生成物
 experiments/2026-11-image-video-gen/results/raw/
+
+# ComfyUI のローカル設定
+experiments/2026-11-image-video-gen/config/.env

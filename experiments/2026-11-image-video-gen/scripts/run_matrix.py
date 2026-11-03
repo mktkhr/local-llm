@@ -17,7 +17,7 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from comfy_api import GpuSampler, download, graph_from_template, object_info, outputs_of, run  # noqa: E402
+from comfy_api import GpuSampler, _json, download, graph_from_template, object_info, outputs_of, run  # noqa: E402
 from tpl2api import swap_unet_loader_gguf  # noqa: E402
 
 LOADER_INPUTS = {"UNETLoader": "unet_name", "UnetLoaderGGUF": "unet_name", "CLIPLoader": "clip_name",
@@ -61,6 +61,15 @@ def gpu_power_limit() -> float | None:
         return float(out.decode().strip().splitlines()[0])
     except Exception:  # noqa: BLE001
         return None
+
+
+def free_models(url: str) -> None:
+    """読み込み済みモデルを VRAM/RAM から外す。RAM 32 GB の機では、モデル構成を切り替えるたびに呼ばないと
+    前のモデルの CPU オフロード分が残ってスワップする。"""
+    try:
+        _json(url + "/free", {"unload_models": True, "free_memory": True})
+    except Exception as e:  # noqa: BLE001
+        print(f"/free failed: {e!r}", file=sys.stderr)
 
 
 def done_keys(jsonl: pathlib.Path) -> set[tuple[str, str, int]]:
@@ -109,12 +118,16 @@ def main(argv=None) -> int:
     total = len(models) * len(prompts) * len(seeds)
     i = 0
     for m in models:
+        freed = False
         for p in prompts:
             for seed in seeds:
                 i += 1
                 key = (m["label"], p["id"], seed)
                 if key in done:
                     continue
+                if not freed:
+                    free_models(url)
+                    freed = True
                 prefix = f"{m['label']}/{p['id']}_s{seed}"
                 graph = build(m, info, p["prompt"], seed, prefix)
                 status, error, entry, wall = "ok", "", None, None

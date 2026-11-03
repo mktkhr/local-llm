@@ -18,7 +18,7 @@ RTX 4080 SUPER 16 GB + RAM 32 GB で、**生成品質を最優先**に画像生�
 | 項目           | 値                                                                                                                                                                                                                                       |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 環境           | ComfyUI(Docker `yanwk/comfyui-boot` CUDA 12.8、ホストの `models/` `custom_nodes/` `output/` をマウント)+ ComfyUI-Manager + ComfyUI-GGUF。バージョンは `docker image inspect` のダイジェストと ComfyUI のコミットを記録                   |
-| GPU            | 電力制限 220 W(常用設定。前実験で prefill 系は電力に敏感とわかっているので、生成時間の比較は同一制限で)                                                                                                                                  |
+| GPU            | 品質評価の生成は電力制限に依存しない(同一シードで決定的)ので、品質バッチは当時の設定(320 W)で回す。生成時間・VRAM の比較表は 220 W(常用設定)で別途 1 プロンプト × 1 seed を測り直す。各行に `power_limit_w` を記録する                   |
 | 画像プロンプト | 固定 8 本: 文字入りポスター(日本語 + 英語)/ 複数人物の複雑構図 / 写実ポートレート / 風景 / 商品写真 / イラスト / 建築 / 小物の配置指示。各モデルで同一シード 3 個                                                                        |
 | 画像の評価     | 1024×1024(モデルの推奨解像度に合わせ 1K と 2K を併記)。**人手の 5 段階評価**(追従・構図・文字・写実/美的・破綻)+ 補助として VLM(Gemma 4 / Qwen3.5-VL をローカル llama-server で)による同一基準の採点。VLM 採点は参考値で、最終判断は人手 |
 | 動画プロンプト | 固定 4 本(人物の動き / カメラワーク / 物理(液体・布)/ 文字看板)× T2V、I2V は Phase 1 の最良画像 4 枚                                                                                                                                     |
@@ -35,8 +35,10 @@ RTX 4080 SUPER 16 GB + RAM 32 GB で、**生成品質を最優先**に画像生�
 
 ### Phase 1: 画像(1〜2 日)
 
-- 対象: Qwen-Image 2.1(GGUF Q8 / Q6 / Q4 + エンコーダ fp8)、FLUX.2 [klein] 9B(fp8 / GGUF)、FLUX.2 [klein] 4B(bf16)、Z-Image Turbo(bf16)と Base、Krea 2 Turbo(GGUF Q6 / Q4)、HiDream-O1-Image(fp8)。FLUX.2 [dev] は Q2_K + fp4 エンコーダで 1 プロンプトだけ試し、載るか・品質がどうかを記録して打ち切る
-- 量子化の比較は Qwen-Image 2.1 と Krea 2 で行う(同一シード、fp8 / Q8 / Q6 / Q4 を並べる)
+- 実行は ComfyUI 公式テンプレート(`scripts/data/templates/`、MIT)を `scripts/tpl2api.py` で API 形式に変換して使う。公式の推奨設定(サンプラー・ステップ・CFG・shift)をそのまま採用し、変えるのはモデルファイル名・プロンプト・seed・解像度だけ
+- 対象(`scripts/data/phase1_models.json`): Z-Image Turbo(bf16)/ Z-Image Base(bf16)/ Qwen-Image 2.1(公式 int8 と bf16)/ FLUX.3 Image Klein(distilled int8・bf16、base bf16)/ FLUX.2 [klein] 9B(fp8)と 4B(bf16)/ Krea 2 Turbo(fp8 / int8 / GGUF Q4_K_M)/ HiDream-O1-Image dev(fp8 / bf16)。FLUX.2 [dev] は Q2_K + fp4 エンコーダで 1 プロンプトだけ試し、載るか・品質がどうかを記録して打ち切る
+- プロンプト拡張(テンプレート同梱の LLM によるプロンプト書き換え。Qwen-Image 2.1・FLUX.3・Krea 2・HiDream にある)は全モデルで **切って** 比較する。同じ文で比べるため。効果は最良モデルで別途 1 回だけ見る
+- 量子化の比較は Qwen-Image 2.1(bf16 vs int8)と Krea 2(fp8 vs int8 vs GGUF Q4)、FLUX.3 Klein(bf16 vs int8)で行う(同一シード)
 - 編集は Qwen-Image 2.1 と klein 9B で同じ指示(背景差し替え・文字修正・物体追加)
 
 ### Phase 2: 動画(2〜3 日)

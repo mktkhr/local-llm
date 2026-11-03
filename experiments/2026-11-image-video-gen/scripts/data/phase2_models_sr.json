@@ -1,0 +1,9 @@
+[
+  {
+    "label": "hunyuan15-t2v-720p-sr1080p",
+    "template": "video_hunyuan_video_1.5_720p_t2v",
+    "sets": ["111:unet_name=hunyuanvideo1.5_1080p_sr_distilled_fp8_scaled.safetensors"],
+    "enable": [111, 113, 108, 120, 114, 117, 133, 134, 135, 136, 137, 139, 140, 141, 142, 143, 109, 118, 112],
+    "note": "公式テンプレートでバイパスされている 720p→1080p 超解像の枝を有効化(SR モデルは fp8)。720p と 1080p の 2 本を出力"
+  }
+]

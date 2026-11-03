@@ -174,3 +174,21 @@ class SetParsing(unittest.TestCase):
         self.assertEqual(unet["unet_name"], "flux3-image-klein-bf16.safetensors")
         ks = [v for v in api.values() if v["class_type"] == "KSampler"][0]["inputs"]
         self.assertEqual((ks["steps"], ks["cfg"]), (4, 1.5))
+
+
+class EnableBypassed(unittest.TestCase):
+    def test_enable_turns_bypassed_super_resolution_branch_on(self):
+        tpl = load("video_hunyuan_video_1.5_720p_t2v.json")
+        base = to_api(tpl, OI)
+        self.assertNotIn("HunyuanVideo15SuperResolution", {v["class_type"] for v in base.values()})
+        sr_ids = [n["id"] for n in tpl["nodes"] if n.get("mode") == 4 and n["type"] not in ("EasyCache", "Note")]
+        api = to_api(load("video_hunyuan_video_1.5_720p_t2v.json"), OI, enable=sr_ids)
+        types = {v["class_type"] for v in api.values()}
+        self.assertIn("HunyuanVideo15SuperResolution", types)
+        self.assertIn("HunyuanVideo15LatentUpscaleWithModel", types)
+        self.assertEqual(sum(v["class_type"] == "SaveVideo" for v in api.values()), 2)
+        self.assertNotIn("EasyCache", types)
+        for k, v in api.items():
+            for name, x in v["inputs"].items():
+                if isinstance(x, list):
+                    self.assertIn(x[0], api, f"{k}.{name} -> {x}")

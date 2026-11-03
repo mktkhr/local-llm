@@ -27,7 +27,7 @@ LOADER_INPUTS = {"UNETLoader": "unet_name", "UnetLoaderGGUF": "unet_name", "CLIP
 
 def build(model: dict, info: dict, prompt: str, seed: int, prefix: str) -> dict:
     api = graph_from_template(model["template"], info, prompt, seed, model.get("width"), model.get("height"),
-                              model.get("steps"), model.get("sets") or [])
+                              model.get("steps"), model.get("sets") or [], model.get("enable"))
     if model.get("gguf"):
         swap_unet_loader_gguf(api, model["gguf"])
     for v in api.values():
@@ -146,7 +146,7 @@ def main(argv=None) -> int:
                                       name=f"{p['id']}_s{seed}{'' if j == 0 else f'-{j}'}{pathlib.Path(f['filename']).suffix}"))
                          for j, f in enumerate(files)]
                 row = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "label": m["label"], "template": m["template"],
-                       "sets": m.get("sets") or [], "gguf": m.get("gguf"), "width": m.get("width"), "height": m.get("height"),
+                       "sets": m.get("sets") or [], "enable": m.get("enable"), "gguf": m.get("gguf"), "width": m.get("width"), "height": m.get("height"),
                        "steps": m.get("steps"), "prompt_id": p["id"], "seed": seed, "status": status, "error": error,
                        "power_limit_w": power_limit,
                        "wall_s": round(wall, 2) if wall else None, "saved": saved, "gpu": gpu.summary()}

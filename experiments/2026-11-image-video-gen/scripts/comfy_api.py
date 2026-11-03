@@ -112,9 +112,9 @@ def object_info(url: str, path: pathlib.Path | None = None, refresh: bool = Fals
 
 
 def graph_from_template(name: str, info: dict, prompt: str, seed: int, width: int | None, height: int | None,
-                        steps: int | None, sets: list[str]) -> dict:
+                        steps: int | None, sets: list[str], enable: list[int] | None = None) -> dict:
     tpl = TEMPLATES_DIR / (name if name.endswith(".json") else name + ".json")
-    api = to_api(json.loads(tpl.read_text()), info, sets=sets)
+    api = to_api(json.loads(tpl.read_text()), info, sets=sets, enable=enable)
     return apply_overrides(api, prompt=prompt, seed=seed, width=width, height=height, steps=steps)
 
 

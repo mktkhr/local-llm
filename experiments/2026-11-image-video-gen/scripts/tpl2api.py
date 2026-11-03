@@ -172,10 +172,18 @@ def _widget_inputs(specs: list[tuple[str, object]], wv: list, prefix: str = "") 
     return out
 
 
-def to_api(workflow: dict, object_info: dict, prune: bool = True, sets: list[str] | None = None) -> dict:
+def to_api(workflow: dict, object_info: dict, prune: bool = True, sets: list[str] | None = None,
+           enable: list[int] | None = None) -> dict:
     """UI 形式 → API 形式。バイパス(mode 4)ノードは同型の入力へ素通し、ミュート(mode 2)は切断する。
     prune=True なら定数スイッチ(ComfySwitchNode)を畳み込み、出力ノードから辿れないノードを捨てる。
-    sets は畳み込みの前に適用する(例: "154:value=false" でスイッチを切替)。"""
+    sets は畳み込みの前に適用する(例: "154:value=false" でスイッチを切替)。
+    enable はトップレベルのノード id の一覧で、そのバイパス/ミュートを解除してから変換する(公式テンプレートが
+    バイパスで同梱している超解像などの枝を有効にする)。"""
+    if enable:
+        workflow = json.loads(json.dumps(workflow))
+        for n in workflow["nodes"]:
+            if n["id"] in set(enable):
+                n["mode"] = 0
     nodes, links, literals = flatten(workflow)
     incoming: dict[tuple[str, int], tuple[str, int]] = {(tk, ts): (fk, fs) for (fk, fs, tk, ts) in links}
 

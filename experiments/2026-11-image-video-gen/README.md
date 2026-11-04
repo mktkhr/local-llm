@@ -2,7 +2,7 @@
 
 16 GB + RAM 32 GB で動く画像生成(Qwen-Image 2.1 / FLUX.2 / Z-Image / Krea 2 / HiDream-O1)と動画生成(Wan 2.2 / HunyuanVideo 1.5 / LTX-2.5 / Kandinsky 6.0 / CogVideoX)を、品質最優先で比較し、常用構成を決める。
 
-**進行中(Phase 1 画像の計測と採点まで完了。FLUX.3 Klein と FLUX.2 klein 9B は gated repo のためスキップ。次は Phase 2 動画)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
+**進行中(Phase 1 画像は完了。Phase 2 動画は T2V 3 構成 × 4 本と 720p / 1080p の検証まで。FLUX.3 Klein・FLUX.2 klein 9B・LTX-2.5 は gated repo のためスキップ)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
 
 | 項目       | 値                                                                        |
 | ---------- | ------------------------------------------------------------------------- |
@@ -25,7 +25,16 @@
 | Z-Image Turbo bf16     | 3    | 4    | 2    | 4          | 3            | 16       | 6.0 s  | Apache 2.0                              |
 | FLUX.2 [klein] 4B base | 3    | 3    | 1    | 3          | 3            | 13       | 16.0 s | Apache 2.0                              |
 
-採点は seed 1 の全 8 プロンプトと、文字(P1)・空間指示(P8)は seed 1〜3 の比較シートを見て付けた(人手 + VLM 補助の暫定値。量子化違いの構成は同一 seed でほぼ同じ画なので代表 1 つに集約)。根拠は「結果」の所見に書いた。
+動画(Phase 2、T2V、4 プロンプト × seed 1、5 秒 24fps)は **HunyuanVideo 1.5 720p** が追従(看板の文字「OPEN 24H」・カメラのドリー/パン・注ぐ液体)で最も良く、**Wan 2.2 14B fp8** は 720p にすると人物の動作指示(傘を下ろして手を振る)まで再現したが 1 本 41 分。**Wan 2.2 5B** は 720p で 4 分と速いが、カメラが動かず看板の文字も崩れる。どの構成も手指・顔の破綻は無かった。1080p は直接生成できず、Hunyuan の公式 SR(720p → 1080p)は 121 フレームでは VRAM 不足、61 フレームで検証中。
+
+| 構成(T2V)                 | 解像度   | 1 本      | 追従 | 動き | 手・顔 | 一貫性 | 破綻の少なさ | 合計 /25    |
+| ------------------------- | -------- | --------- | ---- | ---- | ------ | ------ | ------------ | ----------- |
+| HunyuanVideo 1.5 fp16     | 1280×720 | 45 min    | 5    | 5    | 4      | 4      | 4            | **22**      |
+| Wan 2.2 14B fp8(high/low) | 832×480  | 11 min    | 4    | 3    | 4      | 4      | 4            | 19          |
+| Wan 2.2 14B fp8           | 1280×720 | 41 min    | 5    | 4    | 4      | 4      | 4            | 21(V1 のみ) |
+| Wan 2.2 TI2V-5B fp16      | 1280×704 | **4 min** | 3    | 3    | 4      | 4      | 4            | 18          |
+
+画像の採点は seed 1 の全 8 プロンプトと、文字(P1)・空間指示(P8)は seed 1〜3 の比較シートを見て付けた(人手 + VLM 補助の暫定値。量子化違いの構成は同一 seed でほぼ同じ画なので代表 1 つに集約)。根拠は「結果」の所見に書いた。
 
 ## なぜそうなるか
 
@@ -60,6 +69,13 @@
 - 公式テンプレートの推奨設定をそのまま使う。変えるのはモデルファイル名・プロンプト・seed・解像度(1024×1024 相当)だけ。テンプレート同梱のプロンプト拡張(LLM による書き換え)は全構成で切る
 - 電力制限は 320 W のまま(品質は seed 固定で決定的なので電力に依らない。時間の比較表も 320 W のまま。220 W での再計測はしないと決めた)
 - 構成の一覧は `scripts/data/phase1_models.json`、生データは `results/raw/phase1/runs.jsonl`(commit 対象外)、集計は `results/phase1-summary.md`、seed 1 の比較シートは `results/phase1-sheets/`
+
+### Phase 2: 動画(2026-11-03〜04)
+
+- 公式テンプレート(`video_wan2_2_5B_ti2v`、`video_wan2_2_14B_t2v`、`video_hunyuan_video_1.5_720p_t2v`)を同じ変換で API 化し、`scripts/data/phase2_models.json` × `scripts/data/video_prompts.json`(人物の動き / カメラワーク / 物理 / 文字看板)× seed 1 を `run_matrix.py --timeout 14400` で実行。5 秒 24fps(121 フレーム)、サンプラー・ステップ・CFG はテンプレート既定(Wan 5B: 20 steps cfg 5 uni_pc、Wan 14B: high/low 各 10 steps、Hunyuan: 20 steps cfg 6 euler shift 7)
+- Wan 14B は既定 640×640 を 832×480 に変更、追加で 1280×720 を V1 のみ。LTX-2.5 は gated repo(ライセンス同意が要る)で取得できずスキップ
+- 電力制限は途中(Wan 14B の 2 本目以降)で 320 W → 250 W に変更した。行の `power_limit_w` は実行開始時の値なので、Wan 14B 480p の後半 3 本は 250 W で走っている
+- 生データは `results/raw/phase2/runs.jsonl`、動画は `results/raw/phase2/vid/`(commit 対象外)、集計は `results/phase2-summary.md`、6 フレームの比較シートは `results/phase2-sheets/`(`scripts/video_sheets.py`)
 
 ## 結果
 
@@ -105,6 +121,23 @@ seed 1 の比較シート([results/phase1-sheets/](results/phase1-sheets/))を�
 
 1K → 2K で時間は 3.7〜5.5 倍(画素 4 倍)。VRAM はどれも 16 GB に収まる(HiDream は余裕あり)。生データは `results/raw/phase1/runs-2k.jsonl`、集計は `results/phase1-2k-summary.md`。
 
+### Phase 2: 動画 T2V(3 構成 × 4 本 + 720p 検証)
+
+| 構成                       | 解像度   | 1 本(2 本目以降) | VRAM ピーク | 備考                                                                                                                  |
+| -------------------------- | -------- | ---------------- | ----------- | --------------------------------------------------------------------------------------------------------------------- |
+| Wan 2.2 TI2V-5B fp16       | 1280×704 | 245 s            | 15.9 GB     | 開始画像なしで T2V として使用                                                                                         |
+| Wan 2.2 14B fp8 high/low   | 832×480  | 658 s            | 14.8 GB     | 1 ステップ 28 s。2 モデルを順に載せ替え、RAM 28/30 GB                                                                 |
+| Wan 2.2 14B fp8 high/low   | 1280×720 | 2,448 s(1 本)    | 11.8 GB     | 480p の 3.7 倍                                                                                                        |
+| HunyuanVideo 1.5 720p fp16 | 1280×720 | 2,690 s          | 15.9 GB     | DiT 16.6 GB が VRAM に収まらず毎ステップ重み転送(130 s/step)。2 本目で `VRAM grow failed` → 1 件ごとに `/free` で回避 |
+
+seed 1 の比較シート([results/phase2-sheets/](results/phase2-sheets/))を見た所見:
+
+- **V1 人物(歩いて傘を下ろし手を振る)**: 3 構成とも歩行と手振りは自然で指の破綻なし。「傘を下ろす」まで実行したのは Wan 14B 720p だけ。Wan 5B・14B 480p・Hunyuan は傘を差したまま手を振る
+- **V2 カメラ(茶室へドリーイン、落ち葉)**: Hunyuan だけカメラが実際に前進し、紅葉が落ちる。Wan 5B / 14B はほぼ静止画(室内の明るさが少し変わる程度)
+- **V3 物理(注ぐお茶・揺れるカーテン)**: Hunyuan はマクロで注ぎ、液面が渦を巻く描写まであるが、カップを持つ手の写り方が不自然。Wan 14B は注ぐ・止まるを繰り返し、Wan 5B は注いでいるのに液面が上がらない
+- **V4 看板(OPEN 24H が点灯、料理人が暖簾から出る、右パン)**: Hunyuan は文字が正確で料理人も暖簾から出てパンもする。Wan 14B は看板が小さく暗いが料理人は出る。Wan 5B は文字が「OPEN 20H」風に崩れる
+- 時間一貫性(色・形が途中で変わらない)は 3 構成とも 5 秒では問題なし
+
 ## 落とし穴
 
 | 罠                                     | 症状                                                                                                                                             | 対処                                                                                                                                                        |
@@ -112,6 +145,10 @@ seed 1 の比較シート([results/phase1-sheets/](results/phase1-sheets/))を�
 | RAM 32 GB にモデルが溜まる             | ComfyUI は退避したモデルを CPU RAM に残す。構成を切り替えると前のモデルが残ったまま次を読み、スワップして数分固まる                              | 構成の切り替え時に `POST /free {"unload_models": true, "free_memory": true}` を呼ぶ(`run_matrix.py` が自動で呼ぶ)。RAM 25 GB → 4 GB に戻る                  |
 | ダウンロードと同時に計測しない         | `hf download` の書き込み(〜380 MB/s)でモデル読み込みが 10 MB/s まで落ち、初回が 3 分以上かかる                                                   | 計測中はダウンロードを `kill -STOP`、終わったら `kill -CONT`。`pkill -f` のパターンが自分の ssh シェルにも当たるので `bash -s` のヒアドキュメントで実行する |
 | ComfyUI の出力ファイル名               | `filename_prefix` に `_00001_` の連番が付く。同じ prefix で再実行すると番号がずれる                                                              | 取得時に `prompt_seed.png` へ改名して保存する(`run_matrix.py`)                                                                                              |
+| 動画は 1 本 30 分を超える              | `run_matrix.py` の完了待ち上限(1,800 s)に当たって error 扱い。サーバ側は生成を続け、次の投入が後ろに並ぶ                                         | `--timeout 14400` を付ける。タイムアウトした分はサーバのキャッシュが残っていれば再投入で即返るが、`/free` 後は再生成になる                                  |
+| VRAM に収まらないモデルの連続実行      | HunyuanVideo 1.5 fp16(16.6 GB)は 1 本目は通るが 2 本目で `VRAM grow failed`                                                                      | 構成に `"free_each": true` を付け、1 件ごとに `/free` を呼ぶ                                                                                                |
+| 1080p 超解像の OOM                     | Hunyuan の公式 SR 枝(720p → 1920×1080)は 121 フレームだと 1080p のサンプラーで OOM(7.4 GB 使用中に 3.8 GB 要求)                                  | フレーム数を 61 に落として検証。恒久策は SR 用のタイル分割か、VRAM の大きい GPU                                                                             |
+| 電力制限を途中で変えると行が混ざる     | `power_limit_w` は `run_matrix.py` の開始時に 1 回だけ読む                                                                                       | 変えたら新しい実行として分ける。Phase 2 の Wan 14B 480p 後半 3 本は 250 W で走った                                                                          |
 | サブグラフ入りテンプレートの widget 値 | サブグラフノードの `widgets_values` はノード側の inputs 順ではなく **サブグラフ定義の inputs 順**。ずれると steps に 4096 が入る等の無言の誤動作 | `tpl2api.py` は定義順で割り当て、テストで公式テンプレートの既定値(steps 25 / cfg 1 など)を固定している                                                      |
 
 ## 次
@@ -119,7 +156,10 @@ seed 1 の比較シート([results/phase1-sheets/](results/phase1-sheets/))を�
 - FLUX.3 Klein(distilled / base)と FLUX.2 klein 9B fp8 は HF の gated repo(`black-forest-labs/flux-3-image-klein-comfy`、`black-forest-labs/FLUX.2-klein-base-9b-fp8`)。ライセンス承認済みの HF トークンを GPU 機に置いてから取得し、同じ行列で回す。FLUX.2 klein 4B base は取得済みで実行待ち
 - Z-Image Base にネガティブプロンプト(text, watermark)を入れて「頼んでいない文字」が消えるか 1 回だけ試す
 - Krea 2 のプロンプト拡張(同梱の Qwen3-VL 4B で書き換え)を ON にしたときの変化を最良モデルで 1 回見る
-- Phase 2(動画)の T2V / I2V、Phase 3(画像 → 動画)
+- Hunyuan 1080p SR(61 フレーム)の結果を追記。通れば「720p 生成 → 1080p SR」を常用の 1080p 経路にする
+- HunyuanVideo 1.5 の fp8 cfg 蒸留版(8.3 GB、VRAM に収まる)で速度を測る。fp16 の 45 分が 10 分台になれば常用はこれ
+- Phase 2 の I2V(Hunyuan 1.5 720p i2v、Wan 2.2 14B i2v)と Phase 3(Phase 1 の最良画像 → 動画)
+- LTX-2.5 は HF のライセンス同意後に取得して比較に加える(1080p ネイティブの本命)
 
 ## ファイル
 

@@ -1,0 +1,9 @@
+[
+  {
+    "label": "hunyuan15-t2v-720p-fp8cast",
+    "template": "video_hunyuan_video_1.5_720p_t2v",
+    "sets": ["UNETLoader.weight_dtype=fp8_e4m3fn"],
+    "free_each": true,
+    "note": "720p T2V の公式 fp8 配布が無いので、fp16 を UNETLoader で fp8_e4m3fn にキャストして VRAM に収める速度検証"
+  }
+]

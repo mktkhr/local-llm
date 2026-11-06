@@ -151,6 +151,22 @@ seed 1 の比較シート([results/phase1-sheets/](results/phase1-sheets/))を�
 - Z-Image 系の NSFW ファインチューンは、この範囲では公式とほぼ同一の出力。ファインチューンの効果は評価対象外の露骨な性描写に限られると見てよい
 - 一般品質は公式 3 本(Qwen 2.1 / Krea 2 / Z-Image)が明確に上。無検閲系を常用に混ぜる理由は無い。タグ前提の SDXL 系(Illustrious)は自然文のパイプラインに乗らない
 
+### Phase 1b: 対話的に試すための ComfyUI ワークフロー
+
+露骨な領域の挙動差はここでは評価しない(利用者が UI で直接試す)。そのために `config/workflows/` に 7 本のフラットなワークフローを置き、GPU 機の ComfyUI(`http://192.168.0.144:8188`)の **Workflows サイドバー → compare/** から開けるようにした(`scripts/ui_workflow.py` で生成、`docker cp` で `user/default/workflows/compare/` へ)。各 1 枚ずつ API 経由で生成して配線を確認済み。
+
+| ファイル                       | 中身                                                                       | 設定                                     |
+| ------------------------------ | -------------------------------------------------------------------------- | ---------------------------------------- |
+| `01-z-image-turbo-official`    | 公式 Z-Image Turbo bf16(比較の基準)                                        | 8 steps、cfg 1(ネガティブ無効)、shift 3  |
+| `02-z-image-cyberrealistic-v9` | CyberRealistic Z-Image v9(GGUF Q8)。追従が公式並みで最も使いやすい無検閲系 | 同上                                     |
+| `03-z-image-turbo-nsfw-v2`     | Z-Image Turbo NSFW v2(GGUF Q8)                                             | 同上                                     |
+| `04-chroma1-hd-q8`             | Chroma1-HD(GGUF Q8 + T5-XXL fp8)。ネガティブプロンプトが効く               | 26 steps、cfg 3.5、euler / beta、shift 1 |
+| `05-pony-v7-base`              | Pony V7 base + 専用エンコーダ + SDXL VAE                                   | 20 steps、cfg 3.48、euler / simple       |
+| `06-illustrious-xl-v2`         | Illustrious XL v2.0(Danbooru タグで書く)                                   | 28 steps、cfg 6、euler_ancestral         |
+| `07-juggernaut-xl-v9`          | Juggernaut XL v9                                                           | 30 steps、cfg 5、dpmpp_2m / karras       |
+
+使い方: ワークフローを開く → 「Positive prompt」ノードの文を書き換える → Queue。同じ seed で比べたいときは KSampler の `control_after_generate` を `fixed` にして seed を揃える。出力は GPU 機の `~/comfy-data/storage-user/output/ui/` 配下。
+
 ### Phase 2: 動画 T2V(3 構成 × 4 本 + 720p 検証)
 
 | 構成                               | 解像度   | 1 本(2 本目以降) | VRAM ピーク | 備考                                                                                              |
@@ -203,9 +219,9 @@ seed 1 の比較シート([results/phase2-sheets/](results/phase2-sheets/))を�
 
 ## ファイル
 
-| パス       | 内容                                                              |
-| ---------- | ----------------------------------------------------------------- |
-| `notes/`   | 調査メモ・手順書・途中経過(複数可、番号 prefix で順序づけ)        |
-| `scripts/` | この実験専用の計測スクリプト。共通 harness は `tools/` を使う     |
-| `config/`  | この実験専用の llama-swap entry / compose / systemd override など |
-| `results/` | 集計済みの csv / jsonl。生ログは `results/raw/`(gitignore)        |
+| パス       | 内容                                                                      |
+| ---------- | ------------------------------------------------------------------------- |
+| `notes/`   | 調査メモ・手順書・途中経過(複数可、番号 prefix で順序づけ)                |
+| `scripts/` | この実験専用の計測スクリプト。共通 harness は `tools/` を使う             |
+| `config/`  | ComfyUI の compose と、UI で開ける比較用ワークフロー(`config/workflows/`) |
+| `results/` | 集計済みの csv / jsonl。生ログは `results/raw/`(gitignore)                |

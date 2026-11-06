@@ -4049,5 +4049,15 @@
    }
   },
   "output_node": false
+ },
+ "UnetLoaderGGUF": {
+  "input": {
+   "required": {
+    "unet_name": [
+     []
+    ]
+   }
+  },
+  "output_node": false
  }
 }

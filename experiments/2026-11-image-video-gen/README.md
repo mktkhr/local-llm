@@ -165,6 +165,8 @@ seed 1 の比較シート([results/phase1-sheets/](results/phase1-sheets/))を�
 | `06-illustrious-xl-v2`         | Illustrious XL v2.0(Danbooru タグで書く)                                   | 28 steps、cfg 6、euler_ancestral         |
 | `07-juggernaut-xl-v9`          | Juggernaut XL v9                                                           | 30 steps、cfg 5、dpmpp_2m / karras       |
 
+無検閲系のモデル 9 ファイル(約 57 GB)は 2026-11-06 の判断で GPU 機から削除し、UI の compare/ には `01` だけ残した。`02`〜`07` を使うときは `scripts/data/phase1b_models.json` のファイルを再取得して `docker cp` し直す。
+
 使い方: ワークフローを開く → 「Positive prompt」ノードの文を書き換える → Queue。同じ seed で比べたいときは KSampler の `control_after_generate` を `fixed` にして seed を揃える。出力は GPU 機の `~/comfy-data/storage-user/output/ui/` 配下。
 
 ### Phase 2: 動画 T2V(3 構成 × 4 本 + 720p 検証)

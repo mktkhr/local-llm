@@ -42,6 +42,11 @@ RTX 4080 SUPER 16 GB + RAM 32 GB で、**生成品質を最優先**に画像生�
 - 量子化の比較は Qwen-Image 2.1(bf16 vs int8)と Krea 2(fp8 vs int8 vs GGUF Q4)、FLUX.3 Klein(bf16 vs int8)で行う(同一シード)
 - 編集は Qwen-Image 2.1 と klein 9B で同じ指示(背景差し替え・文字修正・物体追加)
 
+### Phase 1b: 無検閲系モデルとの挙動差(2026-11-06 追加)
+
+- 利用者の要望で追加。公式モデルが学習データのフィルタで描けない概念があるかを、露骨でない境界プロンプト 8 本で見る。対照は Phase 1 の公式 4 構成、相手は Chroma1-HD / Z-Image の NSFW・CyberRealistic FT / Pony V7 / Illustrious XL / Juggernaut XL
+- 未成年・実在人物の性的描写は扱わない。評価は「指示どおり描いたか / 回避(服を足す・ぼかす・崩す)したか / 一般品質」
+
 ### Phase 2: 動画(2〜3 日)
 
 - T2V: Wan 2.2 TI2V-5B(fp16)、Wan 2.2 T2V-A14B(GGUF Q5 + Lightning 4-step、必要なら Q4)、HunyuanVideo 1.5 480p / 720p(fp8 + オフロード)、LTX-2.5(int8 の低 VRAM ローダ。載らなければ 2.3 fp8)、Kandinsky 6.0 Lite(公式ノード)、CogVideoX 1.5-5B(基準点)

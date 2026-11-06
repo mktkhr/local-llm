@@ -2,7 +2,7 @@
 
 16 GB + RAM 32 GB で動く画像生成(Qwen-Image 2.1 / FLUX.2 / Z-Image / Krea 2 / HiDream-O1)と動画生成(Wan 2.2 / HunyuanVideo 1.5 / LTX-2.5 / Kandinsky 6.0 / CogVideoX)を、品質最優先で比較し、常用構成を決める。
 
-**進行中(Phase 1 画像は完了。Phase 2 動画は T2V 3 構成 × 4 本と 720p / 1080p の検証まで。FLUX.3 Klein・FLUX.2 klein 9B・LTX-2.5 は gated repo のためスキップ)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
+**進行中(Phase 1 画像、Phase 1b 無検閲系モデルとの挙動差、Phase 2 動画 T2V まで完了。FLUX.3 Klein・FLUX.2 klein 9B・LTX-2.5 は gated repo のためスキップ)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
 
 | 項目       | 値                                                                        |
 | ---------- | ------------------------------------------------------------------------- |
@@ -33,6 +33,8 @@
 | Wan 2.2 14B fp8(high/low) | 832×480  | 11 min    | 4    | 3    | 4      | 4      | 4            | 19          |
 | Wan 2.2 14B fp8           | 1280×720 | 41 min    | 5    | 4    | 4      | 4      | 4            | 21(V1 のみ) |
 | Wan 2.2 TI2V-5B fp16      | 1280×704 | **4 min** | 3    | 3    | 4      | 4      | 4            | 18          |
+
+無検閲系モデル(Phase 1b: Chroma1-HD、Z-Image Turbo の NSFW / CyberRealistic ファインチューン、Pony V7、Illustrious XL、Juggernaut XL)と公式モデルを、美術ヌード・水着・下着カタログ・流血・武器・ホラーなど 8 本の境界プロンプトで比べた結果、**公式モデル(Qwen-Image 2.1 / Krea 2 / Z-Image)に回避行動は無く、全プロンプトを指示どおり描いた**。服を足す・ぼかす・体を崩すは 1 枚も出ず、Z-Image Turbo の NSFW ファインチューンは同 seed で公式とほぼ同じ絵になる。露骨でない範囲では無検閲モデルを選ぶ理由が無く、一般品質は公式が上(Chroma は暗く解像感が落ちる、Illustrious は自然文を読めずアニメ化、Juggernaut / Pony は 2024〜25 年水準)。
 
 画像の採点は seed 1 の全 8 プロンプトと、文字(P1)・空間指示(P8)は seed 1〜3 の比較シートを見て付けた(人手 + VLM 補助の暫定値。量子化違いの構成は同一 seed でほぼ同じ画なので代表 1 つに集約)。根拠は「結果」の所見に書いた。
 
@@ -70,6 +72,13 @@
 - 公式テンプレートの推奨設定をそのまま使う。変えるのはモデルファイル名・プロンプト・seed・解像度(1024×1024 相当)だけ。テンプレート同梱のプロンプト拡張(LLM による書き換え)は全構成で切る
 - 電力制限は 320 W のまま(品質は seed 固定で決定的なので電力に依らない。時間の比較表も 320 W のまま。220 W での再計測はしないと決めた)
 - 構成の一覧は `scripts/data/phase1_models.json`、生データは `results/raw/phase1/runs.jsonl`(commit 対象外)、集計は `results/phase1-summary.md`、seed 1 の比較シートは `results/phase1-sheets/`
+
+### Phase 1b: 無検閲系モデルとの挙動差(2026-11-06)
+
+- 問い: 公式モデルは「学習データのフィルタ」で描けない概念があるのか。ローカル実行では実行時フィルタはどのモデルにも無い(Qwen-Image 2.1 の config にも safety_checker は無く、HF の「Uncensored GGUF」は無改変の量子化)ので、差が出るなら学習側の欠落
+- 境界プロンプト 8 本(`scripts/data/prompts_boundary.json`): 美術ヌード(19 世紀アカデミック油彩)/ 水着 / 流血 / 武器 / ホラー / 喫煙・刺青 / 下着カタログ / 男性の上半身。未成年・実在人物は対象外
+- 構成(`scripts/data/phase1b_models.json`): 公式対照 4(Qwen 2.1 int8、Krea 2 int8、Z-Image Turbo、Z-Image Base)+ Chroma1-HD(GGUF Q8 + t5xxl fp8、公式テンプレ)、Z-Image Turbo NSFW v2(GGUF Q8)、CyberRealistic Z-Image v9(GGUF Q8)、Pony V7 base(公式配布の PNG 埋め込みワークフロー)、Illustrious XL v2.0、Juggernaut XL v9(SDXL 簡易テンプレ)。seed 1,2 × 境界 8 本 = 160 枚、さらに新規 6 構成で標準 8 本 × seed 1
+- 生データ `results/raw/phase1b/`(commit 対象外)、集計 `results/phase1b-boundary-summary.md` / `results/phase1b-standard-summary.md`、シート `results/phase1b-sheets/`
 
 ### Phase 2: 動画(2026-11-03〜04)
 
@@ -122,6 +131,26 @@ seed 1 の比較シート([results/phase1-sheets/](results/phase1-sheets/))を�
 
 1K → 2K で時間は 3.7〜5.5 倍(画素 4 倍)。VRAM はどれも 16 GB に収まる(HiDream は余裕あり)。生データは `results/raw/phase1/runs-2k.jsonl`、集計は `results/phase1-2k-summary.md`。
 
+### Phase 1b: 無検閲系モデル × 境界プロンプト
+
+| 構成                         | 1 枚     | VRAM    | 境界 8 本の挙動(seed 1,2)                                                              | 標準 8 本の品質                            |
+| ---------------------------- | -------- | ------- | -------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Qwen-Image 2.1 int8(公式)    | 9 s      | 15.8 GB | 全部描く。回避なし                                                                     | (Phase 1 のとおり)                         |
+| Krea 2 Turbo int8(公式)      | 6 s      | 15.8 GB | 全部描く。回避なし。下着カタログは最もカタログらしい                                   | 同上                                       |
+| Z-Image Turbo / Base(公式)   | 6 / 32 s | 15.9 GB | 全部描く。Base は下着カタログに崩れた説明文を足す(Phase 1 と同じ癖)                    | 同上                                       |
+| Chroma1-HD Q8                | 46 s     | 14.1 GB | 全部描く。暗く、解像感が一段落ちる                                                     | 構図は追うが写実の細部と色が弱い           |
+| Z-Image Turbo NSFW v2 Q8     | 7 s      | 14.8 GB | **公式 Turbo と同 seed でほぼ同じ絵**。画面端に文字ブロックのゴミ                      | 公式とほぼ同じ                             |
+| CyberRealistic Z-Image v9 Q8 | 7 s      | 15.0 GB | 全部描く。人物の人種・体型が公式と変わる「別の写実チューニング」                       | 公式 Turbo と同等                          |
+| Pony V7 base                 | 25 s     | 15.9 GB | ヌード油彩は描くがラフ、ホラーは暗く小さい                                             | キャラ寄りで写実は弱い                     |
+| Illustrious XL v2.0          | 6 s      | 9.9 GB  | 自然文を読めず、写実指示でもアニメ絵・極端な寄り(下着カタログは腰だけ、ボクサーは漫画) | アニメ化。比較対象外                       |
+| Juggernaut XL v9             | 6 s      | 7.5 GB  | 全部描く。2024 年水準で破綻は無い                                                      | ラーメン屋は人物配置を外す。肌の写実は健闘 |
+
+所見:
+
+- 境界(露骨でない範囲)では **公式モデルも何も避けない**。差が出るのは画風と解像感だけ。「無検閲モデルでないと描けない」概念は今回の 8 本には無かった
+- Z-Image 系の NSFW ファインチューンは、この範囲では公式とほぼ同一の出力。ファインチューンの効果は評価対象外の露骨な性描写に限られると見てよい
+- 一般品質は公式 3 本(Qwen 2.1 / Krea 2 / Z-Image)が明確に上。無検閲系を常用に混ぜる理由は無い。タグ前提の SDXL 系(Illustrious)は自然文のパイプラインに乗らない
+
 ### Phase 2: 動画 T2V(3 構成 × 4 本 + 720p 検証)
 
 | 構成                               | 解像度   | 1 本(2 本目以降) | VRAM ピーク | 備考                                                                                              |
@@ -149,16 +178,18 @@ seed 1 の比較シート([results/phase2-sheets/](results/phase2-sheets/))を�
 
 ## 落とし穴
 
-| 罠                                     | 症状                                                                                                                                             | 対処                                                                                                                                                        |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RAM 32 GB にモデルが溜まる             | ComfyUI は退避したモデルを CPU RAM に残す。構成を切り替えると前のモデルが残ったまま次を読み、スワップして数分固まる                              | 構成の切り替え時に `POST /free {"unload_models": true, "free_memory": true}` を呼ぶ(`run_matrix.py` が自動で呼ぶ)。RAM 25 GB → 4 GB に戻る                  |
-| ダウンロードと同時に計測しない         | `hf download` の書き込み(〜380 MB/s)でモデル読み込みが 10 MB/s まで落ち、初回が 3 分以上かかる                                                   | 計測中はダウンロードを `kill -STOP`、終わったら `kill -CONT`。`pkill -f` のパターンが自分の ssh シェルにも当たるので `bash -s` のヒアドキュメントで実行する |
-| ComfyUI の出力ファイル名               | `filename_prefix` に `_00001_` の連番が付く。同じ prefix で再実行すると番号がずれる                                                              | 取得時に `prompt_seed.png` へ改名して保存する(`run_matrix.py`)                                                                                              |
-| 動画は 1 本 30 分を超える              | `run_matrix.py` の完了待ち上限(1,800 s)に当たって error 扱い。サーバ側は生成を続け、次の投入が後ろに並ぶ                                         | `--timeout 14400` を付ける。タイムアウトした分はサーバのキャッシュが残っていれば再投入で即返るが、`/free` 後は再生成になる                                  |
-| VRAM に収まらないモデルの連続実行      | HunyuanVideo 1.5 fp16(16.6 GB)は 1 本目は通るが 2 本目で `VRAM grow failed`                                                                      | 構成に `"free_each": true` を付け、1 件ごとに `/free` を呼ぶ                                                                                                |
-| 1080p 超解像の OOM                     | Hunyuan の公式 SR 枝(720p → 1920×1080)は 121 フレームだと 1080p のサンプラーで OOM(7.4 GB 使用中に 3.8 GB 要求)                                  | フレーム数を 61 に落として検証。恒久策は SR 用のタイル分割か、VRAM の大きい GPU                                                                             |
-| 電力制限を途中で変えると行が混ざる     | `power_limit_w` は `run_matrix.py` の開始時に 1 回だけ読む                                                                                       | 変えたら新しい実行として分ける。Phase 2 の Wan 14B 480p 後半 3 本は 250 W で走った                                                                          |
-| サブグラフ入りテンプレートの widget 値 | サブグラフノードの `widgets_values` はノード側の inputs 順ではなく **サブグラフ定義の inputs 順**。ずれると steps に 4096 が入る等の無言の誤動作 | `tpl2api.py` は定義順で割り当て、テストで公式テンプレートの既定値(steps 25 / cfg 1 など)を固定している                                                      |
+| 罠                                         | 症状                                                                                                                                             | 対処                                                                                                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RAM 32 GB にモデルが溜まる                 | ComfyUI は退避したモデルを CPU RAM に残す。構成を切り替えると前のモデルが残ったまま次を読み、スワップして数分固まる                              | 構成の切り替え時に `POST /free {"unload_models": true, "free_memory": true}` を呼ぶ(`run_matrix.py` が自動で呼ぶ)。RAM 25 GB → 4 GB に戻る                  |
+| ダウンロードと同時に計測しない             | `hf download` の書き込み(〜380 MB/s)でモデル読み込みが 10 MB/s まで落ち、初回が 3 分以上かかる                                                   | 計測中はダウンロードを `kill -STOP`、終わったら `kill -CONT`。`pkill -f` のパターンが自分の ssh シェルにも当たるので `bash -s` のヒアドキュメントで実行する |
+| ComfyUI の出力ファイル名                   | `filename_prefix` に `_00001_` の連番が付く。同じ prefix で再実行すると番号がずれる                                                              | 取得時に `prompt_seed.png` へ改名して保存する(`run_matrix.py`)                                                                                              |
+| 公式配布のワークフローが PNG にしか無い    | Pony V7 は ComfyUI ワークフローを PNG 画像に埋め込んで配布(single-file checkpoint に text encoder が無く、専用ローダ構成が要る)                  | PNG の tEXt チャンク `workflow` を取り出してテンプレート化(`image_pony_v7_simple.json`)。PreviewImage は SaveImage に置換                                   |
+| ファイル追加後の `/object_info` キャッシュ | ローダのファイル一覧は起動時のキャッシュを使うので、追加したモデルが `run_matrix.py` の事前チェックで「無い」扱いになり構成ごと飛ばされる        | 追加後は `--refresh-object-info` を付ける                                                                                                                   |
+| 動画は 1 本 30 分を超える                  | `run_matrix.py` の完了待ち上限(1,800 s)に当たって error 扱い。サーバ側は生成を続け、次の投入が後ろに並ぶ                                         | `--timeout 14400` を付ける。タイムアウトした分はサーバのキャッシュが残っていれば再投入で即返るが、`/free` 後は再生成になる                                  |
+| VRAM に収まらないモデルの連続実行          | HunyuanVideo 1.5 fp16(16.6 GB)は 1 本目は通るが 2 本目で `VRAM grow failed`                                                                      | 構成に `"free_each": true` を付け、1 件ごとに `/free` を呼ぶ                                                                                                |
+| 1080p 超解像の OOM                         | Hunyuan の公式 SR 枝(720p → 1920×1080)は 121 フレームだと 1080p のサンプラーで OOM(7.4 GB 使用中に 3.8 GB 要求)                                  | フレーム数を 61 に落として検証。恒久策は SR 用のタイル分割か、VRAM の大きい GPU                                                                             |
+| 電力制限を途中で変えると行が混ざる         | `power_limit_w` は `run_matrix.py` の開始時に 1 回だけ読む                                                                                       | 変えたら新しい実行として分ける。Phase 2 の Wan 14B 480p 後半 3 本は 250 W で走った                                                                          |
+| サブグラフ入りテンプレートの widget 値     | サブグラフノードの `widgets_values` はノード側の inputs 順ではなく **サブグラフ定義の inputs 順**。ずれると steps に 4096 が入る等の無言の誤動作 | `tpl2api.py` は定義順で割り当て、テストで公式テンプレートの既定値(steps 25 / cfg 1 など)を固定している                                                      |
 
 ## 次
 

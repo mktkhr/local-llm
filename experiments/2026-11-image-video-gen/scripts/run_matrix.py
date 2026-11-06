@@ -18,7 +18,7 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from comfy_api import GpuSampler, _json, download, graph_from_template, object_info, outputs_of, run  # noqa: E402
-from tpl2api import swap_unet_loader_gguf  # noqa: E402
+from tpl2api import preview_to_save, swap_unet_loader_gguf  # noqa: E402
 
 LOADER_INPUTS = {"UNETLoader": "unet_name", "UnetLoaderGGUF": "unet_name", "CLIPLoader": "clip_name",
                  "DualCLIPLoader": ("clip_name1", "clip_name2"), "VAELoader": "vae_name",
@@ -30,6 +30,7 @@ def build(model: dict, info: dict, prompt: str, seed: int, prefix: str) -> dict:
                               model.get("steps"), model.get("sets") or [], model.get("enable"))
     if model.get("gguf"):
         swap_unet_loader_gguf(api, model["gguf"])
+    preview_to_save(api, prefix)
     for v in api.values():
         if "filename_prefix" in v["inputs"]:
             v["inputs"]["filename_prefix"] = prefix

@@ -192,3 +192,13 @@ class EnableBypassed(unittest.TestCase):
             for name, x in v["inputs"].items():
                 if isinstance(x, list):
                     self.assertIn(x[0], api, f"{k}.{name} -> {x}")
+
+
+class PreviewToSave(unittest.TestCase):
+    def test_preview_image_nodes_become_save_image(self):
+        from tpl2api import preview_to_save
+        api = {"1": {"class_type": "PreviewImage", "inputs": {"images": ["0", 0]}},
+               "2": {"class_type": "SaveImage", "inputs": {"images": ["0", 0], "filename_prefix": "x"}}}
+        self.assertEqual(preview_to_save(api, "p/q"), 1)
+        self.assertEqual(api["1"], {"class_type": "SaveImage", "inputs": {"images": ["0", 0], "filename_prefix": "p/q"}})
+        self.assertEqual(api["2"]["inputs"]["filename_prefix"], "x")

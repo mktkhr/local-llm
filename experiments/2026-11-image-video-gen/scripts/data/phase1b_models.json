@@ -1,21 +1,85 @@
 [
-  {"label": "qwen21-int8", "template": "image_qwen_image_2_1_t2i", "sets": [], "note": "公式対照"},
-  {"label": "krea2-turbo-int8", "template": "image_krea2_turbo_t2i", "sets": ["30:24:value=false", "UNETLoader.unet_name=krea2_turbo_int8_convrot.safetensors"], "note": "公式対照"},
-  {"label": "z-image-turbo-bf16", "template": "image_z_image_turbo", "sets": [], "note": "公式対照(Z-Image 系 FT の比較元)"},
-  {"label": "z-image-base-bf16", "template": "image_z_image", "sets": [], "note": "公式対照"},
-  {"label": "chroma1-hd-q8", "template": "image_chroma_text_to_image", "sets": [], "gguf": "Chroma1-HD-Q8_0.gguf",
-   "note": "lodestones Chroma1-HD(FLUX.1-schnell 系 8.9B、Apache 2.0、無検閲を掲げて学習)。GGUF Q8_0 + t5xxl fp8。テンプレ既定 26 steps cfg 3.5 euler/beta"},
-  {"label": "z-image-turbo-nsfw-v2-q8", "template": "image_z_image_turbo", "sets": [], "gguf": "z_image_nsfw_v2-Q8_0.gguf",
-   "note": "lesliemore の Z-Image Turbo NSFW ファインチューン v2(GGUF Q8)。公式 Turbo と同 seed で比較"},
-  {"label": "z-image-cyberrealistic-v9-q8", "template": "image_z_image_turbo", "sets": [], "gguf": "zit_CyberRealistic_v9-Q8_0.gguf",
-   "note": "CyberRealistic の Z-Image Turbo 版 v9(写実系コミュニティ FT、GGUF Q8)"},
-  {"label": "pony-v7-base", "template": "image_sdxl_simple",
-   "sets": ["CheckpointLoaderSimple.ckpt_name=pony-v7-base.safetensors", "KSampler.steps=30", "KSampler.cfg=4", "KSampler.sampler_name=euler", "KSampler.scheduler=simple"],
-   "note": "PurpleSmart Pony V7(AuraFlow 6.8B、Pony License)。single-file checkpoint。公式推奨: 30 steps 以上、768〜1536px"},
-  {"label": "illustrious-xl-v2", "template": "image_sdxl_simple",
-   "sets": ["CheckpointLoaderSimple.ckpt_name=Illustrious-XL-v2.0.safetensors", "KSampler.steps=28", "KSampler.cfg=6", "KSampler.sampler_name=euler_ancestral", "KSampler.scheduler=normal"],
-   "note": "OnomaAI Illustrious XL v2.0(SDXL 系アニメ基盤、無検閲コミュニティの本流)。自然文プロンプトのまま回す"},
-  {"label": "juggernaut-xl-v9", "template": "image_sdxl_simple",
-   "sets": ["CheckpointLoaderSimple.ckpt_name=Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors", "KSampler.steps=30", "KSampler.cfg=5", "KSampler.sampler_name=dpmpp_2m", "KSampler.scheduler=karras"],
-   "note": "RunDiffusion Juggernaut XL v9(SDXL 写実系の定番)"}
+ {
+  "label": "qwen21-int8",
+  "template": "image_qwen_image_2_1_t2i",
+  "sets": [],
+  "note": "公式対照"
+ },
+ {
+  "label": "krea2-turbo-int8",
+  "template": "image_krea2_turbo_t2i",
+  "sets": [
+   "30:24:value=false",
+   "UNETLoader.unet_name=krea2_turbo_int8_convrot.safetensors"
+  ],
+  "note": "公式対照"
+ },
+ {
+  "label": "z-image-turbo-bf16",
+  "template": "image_z_image_turbo",
+  "sets": [],
+  "note": "公式対照(Z-Image 系 FT の比較元)"
+ },
+ {
+  "label": "z-image-base-bf16",
+  "template": "image_z_image",
+  "sets": [],
+  "note": "公式対照"
+ },
+ {
+  "label": "chroma1-hd-q8",
+  "template": "image_chroma_text_to_image",
+  "sets": [],
+  "gguf": "Chroma1-HD-Q8_0.gguf",
+  "note": "lodestones Chroma1-HD(FLUX.1-schnell 系 8.9B、Apache 2.0、無検閲を掲げて学習)。GGUF Q8_0 + t5xxl fp8。テンプレ既定 26 steps cfg 3.5 euler/beta"
+ },
+ {
+  "label": "z-image-turbo-nsfw-v2-q8",
+  "template": "image_z_image_turbo",
+  "sets": [],
+  "gguf": "z_image_nsfw_v2-Q8_0.gguf",
+  "note": "lesliemore の Z-Image Turbo NSFW ファインチューン v2(GGUF Q8)。公式 Turbo と同 seed で比較"
+ },
+ {
+  "label": "z-image-cyberrealistic-v9-q8",
+  "template": "image_z_image_turbo",
+  "sets": [],
+  "gguf": "zit_CyberRealistic_v9-Q8_0.gguf",
+  "note": "CyberRealistic の Z-Image Turbo 版 v9(写実系コミュニティ FT、GGUF Q8)"
+ },
+ {
+  "label": "pony-v7-base",
+  "template": "image_pony_v7_simple",
+  "sets": [
+   "CLIPLoader.clip_name=pony_v7_text_encoder_fp16.safetensors",
+   "VAELoader.vae_name=pony_v7_vae_sdxl_fp16.safetensors",
+   "EmptyLatentImage.width=1024",
+   "EmptyLatentImage.height=1024"
+  ],
+  "note": "PurpleSmart Pony V7(AuraFlow 6.8B、Pony License)。公式配布の ComfyUI ワークフロー(PNG 埋め込み)を使用: checkpoint(DiT のみ)+ 専用テキストエンコーダ + SDXL VAE、20 steps cfg 3.48 euler/simple。既定 1280×1536 を 1024 に"
+ },
+ {
+  "label": "illustrious-xl-v2",
+  "template": "image_sdxl_simple",
+  "sets": [
+   "CheckpointLoaderSimple.ckpt_name=Illustrious-XL-v2.0.safetensors",
+   "KSampler.steps=28",
+   "KSampler.cfg=6",
+   "KSampler.sampler_name=euler_ancestral",
+   "KSampler.scheduler=normal"
+  ],
+  "note": "OnomaAI Illustrious XL v2.0(SDXL 系アニメ基盤、無検閲コミュニティの本流)。自然文プロンプトのまま回す"
+ },
+ {
+  "label": "juggernaut-xl-v9",
+  "template": "image_sdxl_simple",
+  "sets": [
+   "CheckpointLoaderSimple.ckpt_name=Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
+   "KSampler.steps=30",
+   "KSampler.cfg=5",
+   "KSampler.sampler_name=dpmpp_2m",
+   "KSampler.scheduler=karras"
+  ],
+  "note": "RunDiffusion Juggernaut XL v9(SDXL 写実系の定番)"
+ }
 ]

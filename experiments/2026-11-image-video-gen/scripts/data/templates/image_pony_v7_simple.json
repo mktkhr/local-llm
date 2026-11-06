@@ -1,0 +1,559 @@
+{
+ "id": "49debcf3-8a91-4531-949f-05942d185f36",
+ "revision": 0,
+ "last_node_id": 36,
+ "last_link_id": 48,
+ "nodes": [
+  {
+   "id": 8,
+   "type": "VAEDecode",
+   "pos": [
+    1531.0975341796875,
+    646.2999877929688
+   ],
+   "size": [
+    210,
+    46
+   ],
+   "flags": {},
+   "order": 10,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "samples",
+     "type": "LATENT",
+     "link": 7
+    },
+    {
+     "name": "vae",
+     "type": "VAE",
+     "link": 40
+    }
+   ],
+   "outputs": [
+    {
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "slot_index": 0,
+     "links": [
+      38
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "VAEDecode"
+   },
+   "widgets_values": []
+  },
+  {
+   "id": 7,
+   "type": "CLIPTextEncode",
+   "pos": [
+    414.21002197265625,
+    397.4700927734375
+   ],
+   "size": [
+    425.27801513671875,
+    180.6060791015625
+   ],
+   "flags": {},
+   "order": 7,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "clip",
+     "type": "CLIP",
+     "link": 46
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "slot_index": 0,
+     "links": [
+      6
+     ]
+    }
+   ],
+   "title": "CLIP Text Encode (Negative Prompt)",
+   "properties": {
+    "Node name for S&R": "CLIPTextEncode"
+   },
+   "widgets_values": [
+    ""
+   ],
+   "color": "#322",
+   "bgcolor": "#533"
+  },
+  {
+   "id": 25,
+   "type": "VAELoader",
+   "pos": [
+    984,
+    937
+   ],
+   "size": [
+    315,
+    58
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "VAE",
+     "type": "VAE",
+     "links": [
+      40
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "VAELoader"
+   },
+   "widgets_values": [
+    "diffusion_pytorch_model.fp16.safetensors"
+   ]
+  },
+  {
+   "id": 31,
+   "type": "MarkdownNote",
+   "pos": [
+    353.0008850097656,
+    -346.6473083496094
+   ],
+   "size": [
+    582.3847045898438,
+    261.8368835449219
+   ],
+   "flags": {},
+   "order": 1,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "properties": {},
+   "widgets_values": [
+    "# Fictional brings characters to life using the latest SOTA models.  Discover, create, and interact with living multimodal AI characters who generate their own images, videos, and voices.  \n\n## Try it on the \n## App Store - https://apps.apple.com/us/app/fictional/id6739802573\n## Play Store - https://play.google.com/store/apps/details?id=ai.fictional.app\n## Web - https://my.fictional.ai"
+   ],
+   "color": "#432",
+   "bgcolor": "#653"
+  },
+  {
+   "id": 32,
+   "type": "CheckpointLoaderSimple",
+   "pos": [
+    453.0841979980469,
+    -4.559848785400391
+   ],
+   "size": [
+    270,
+    98
+   ],
+   "flags": {},
+   "order": 2,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      44
+     ]
+    },
+    {
+     "name": "CLIP",
+     "type": "CLIP",
+     "links": null
+    },
+    {
+     "name": "VAE",
+     "type": "VAE",
+     "links": null
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "CheckpointLoaderSimple"
+   },
+   "widgets_values": [
+    "pony-v7-base.safetensors"
+   ]
+  },
+  {
+   "id": 5,
+   "type": "EmptyLatentImage",
+   "pos": [
+    521.653564453125,
+    627.6162109375
+   ],
+   "size": [
+    315,
+    106
+   ],
+   "flags": {},
+   "order": 3,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "LATENT",
+     "type": "LATENT",
+     "slot_index": 0,
+     "links": [
+      17
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "EmptyLatentImage"
+   },
+   "widgets_values": [
+    1280,
+    1536,
+    1
+   ]
+  },
+  {
+   "id": 33,
+   "type": "T5TokenizerOptions",
+   "pos": [
+    69.28071594238281,
+    191.09471130371094
+   ],
+   "size": [
+    270,
+    82
+   ],
+   "flags": {},
+   "order": 6,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "clip",
+     "type": "CLIP",
+     "link": 47
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      48
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "T5TokenizerOptions"
+   },
+   "widgets_values": [
+    768,
+    768
+   ]
+  },
+  {
+   "id": 34,
+   "type": "T5TokenizerOptions",
+   "pos": [
+    62.77402877807617,
+    398.0074157714844
+   ],
+   "size": [
+    270,
+    82
+   ],
+   "flags": {},
+   "order": 5,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "clip",
+     "type": "CLIP",
+     "link": 45
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      46
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "T5TokenizerOptions"
+   },
+   "widgets_values": [
+    768,
+    768
+   ]
+  },
+  {
+   "id": 6,
+   "type": "CLIPTextEncode",
+   "pos": [
+    415,
+    186
+   ],
+   "size": [
+    422.84503173828125,
+    164.31304931640625
+   ],
+   "flags": {},
+   "order": 8,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "clip",
+     "type": "CLIP",
+     "link": 48
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "slot_index": 0,
+     "links": [
+      4
+     ]
+    }
+   ],
+   "title": "CLIP Text Encode (Positive Prompt)",
+   "properties": {
+    "Node name for S&R": "CLIPTextEncode"
+   },
+   "widgets_values": [
+    "style_cluster_1610, score_9, rating_safe, portrait of anthro female unicorn with pink mane, white skin and blue eyes. She wears a gold crown on hear head. Black solid background."
+   ],
+   "color": "#232",
+   "bgcolor": "#353"
+  },
+  {
+   "id": 30,
+   "type": "CLIPLoader",
+   "pos": [
+    -353.48089599609375,
+    284.3841247558594
+   ],
+   "size": [
+    315,
+    106
+   ],
+   "flags": {},
+   "order": 4,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      45,
+      47
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "CLIPLoader"
+   },
+   "widgets_values": [
+    "model.fp16.safetensors",
+    "qwen_image",
+    "default"
+   ]
+  },
+  {
+   "id": 3,
+   "type": "KSampler",
+   "pos": [
+    1049.8985595703125,
+    308.60009765625
+   ],
+   "size": [
+    315,
+    474
+   ],
+   "flags": {},
+   "order": 9,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "model",
+     "type": "MODEL",
+     "link": 44
+    },
+    {
+     "name": "positive",
+     "type": "CONDITIONING",
+     "link": 4
+    },
+    {
+     "name": "negative",
+     "type": "CONDITIONING",
+     "link": 6
+    },
+    {
+     "name": "latent_image",
+     "type": "LATENT",
+     "link": 17
+    }
+   ],
+   "outputs": [
+    {
+     "name": "LATENT",
+     "type": "LATENT",
+     "slot_index": 0,
+     "links": [
+      7
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "KSampler"
+   },
+   "widgets_values": [
+    42,
+    "fixed",
+    20,
+    3.48,
+    "euler",
+    "simple",
+    1
+   ]
+  },
+  {
+   "id": 23,
+   "type": "PreviewImage",
+   "pos": [
+    1837.0008544921875,
+    647.7998657226562
+   ],
+   "size": [
+    670,
+    520
+   ],
+   "flags": {},
+   "order": 11,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "images",
+     "type": "IMAGE",
+     "link": 38
+    }
+   ],
+   "outputs": [],
+   "properties": {
+    "Node name for S&R": "PreviewImage"
+   },
+   "widgets_values": []
+  }
+ ],
+ "links": [
+  [
+   4,
+   6,
+   0,
+   3,
+   1,
+   "CONDITIONING"
+  ],
+  [
+   6,
+   7,
+   0,
+   3,
+   2,
+   "CONDITIONING"
+  ],
+  [
+   7,
+   3,
+   0,
+   8,
+   0,
+   "LATENT"
+  ],
+  [
+   17,
+   5,
+   0,
+   3,
+   3,
+   "LATENT"
+  ],
+  [
+   38,
+   8,
+   0,
+   23,
+   0,
+   "IMAGE"
+  ],
+  [
+   40,
+   25,
+   0,
+   8,
+   1,
+   "VAE"
+  ],
+  [
+   44,
+   32,
+   0,
+   3,
+   0,
+   "MODEL"
+  ],
+  [
+   45,
+   30,
+   0,
+   34,
+   0,
+   "CLIP"
+  ],
+  [
+   46,
+   34,
+   0,
+   7,
+   0,
+   "CLIP"
+  ],
+  [
+   47,
+   30,
+   0,
+   33,
+   0,
+   "CLIP"
+  ],
+  [
+   48,
+   33,
+   0,
+   6,
+   0,
+   "CLIP"
+  ]
+ ],
+ "groups": [],
+ "config": {},
+ "extra": {
+  "ds": {
+   "scale": 0.8791958397368398,
+   "offset": [
+    -278.8795526473416,
+    186.5618261783741
+   ]
+  },
+  "frontendVersion": "1.26.7"
+ },
+ "version": 0.4
+}

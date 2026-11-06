@@ -360,6 +360,17 @@ def swap_unet_loader_gguf(api: dict, gguf_name: str) -> int:
     return n
 
 
+def preview_to_save(api: dict, filename_prefix: str) -> int:
+    """PreviewImage(一時ファイル)を SaveImage に置き換えて出力を残す。公式配布のワークフローに多い。置換数を返す。"""
+    n = 0
+    for v in api.values():
+        if v["class_type"] == "PreviewImage":
+            v["class_type"] = "SaveImage"
+            v["inputs"] = {"images": v["inputs"].get("images"), "filename_prefix": filename_prefix}
+            n += 1
+    return n
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--template", type=pathlib.Path, required=True)

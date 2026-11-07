@@ -27,7 +27,8 @@ one() {  # one <prompt-file> <id>  → 単一プロンプトの一時ファイ�
   python3 - "$1" "$2" <<'PY'
 import json,sys,pathlib
 ps=[p for p in json.load(open(sys.argv[1])) if p["id"]==sys.argv[2]]
-tmp=pathlib.Path("results/raw/_one.json"); tmp.write_text(json.dumps(ps,ensure_ascii=False)); print(tmp)
+# spec_bench.py は 1 ファイル 1 プロンプト(dict)を期待する
+tmp=pathlib.Path("results/raw/_one.json"); tmp.write_text(json.dumps(ps[0],ensure_ascii=False)); print(tmp)
 PY
 }
 
@@ -55,11 +56,13 @@ for config in $CONFIGS; do
         # 直前の行に SATA SSD の読み出しセクタ数(512 B)を足す
         python3 - "$OUT" "$vm_before" "$vm_after" <<'PY'
 import json,sys,pathlib
-p=pathlib.Path(sys.argv[1]); lines=p.read_text().splitlines()
+p=pathlib.Path(sys.argv[1])
+if not p.exists(): sys.exit(0)
+lines=p.read_text().splitlines()
 r=json.loads(lines[-1]); r["sda_read_mib"]=round((int(sys.argv[3])-int(sys.argv[2]))*512/2**20,1)
 lines[-1]=json.dumps(r,ensure_ascii=False); p.write_text("\n".join(lines)+"\n")
 PY
-        tail -1 "$OUT" | python3 -c 'import json,sys; r=json.loads(sys.stdin.read()); m=r.get("metrics",{}); print(f"   {r[\"config\"]} {r[\"prompt_id\"]} b{r[\"block\"]}: prompt {m.get(\"prefill_tok_s\")} tok/s, decode {m.get(\"decode_tok_s\")} tok/s, wall {r.get(\"wall_s\")} s, sda_read {r.get(\"sda_read_mib\")} MiB, vram {r.get(\"gpu\",{}).get(\"vram_peak_mib\")}")'
+        [ -f "$OUT" ] && tail -1 "$OUT" | python3 -c 'import json,sys; r=json.loads(sys.stdin.read()); m=r.get("metrics",{}); print(f"   {r[\"config\"]} {r[\"prompt_id\"]} b{r[\"block\"]}: prompt {m.get(\"prefill_tok_s\")} tok/s, decode {m.get(\"decode_tok_s\")} tok/s, wall {r.get(\"wall_s\")} s, sda_read {r.get(\"sda_read_mib\")} MiB, vram {r.get(\"gpu\",{}).get(\"vram_peak_mib\")}")'
       done
     done
   done

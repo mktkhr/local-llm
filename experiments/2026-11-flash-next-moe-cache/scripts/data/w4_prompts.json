@@ -1,0 +1,29 @@
+[
+  {
+    "id": "W4-01",
+    "messages": [
+      {
+        "role": "user",
+        "content": "1 から 100 までの素数の和を求めてください。途中の手順を示し、最後に答えだけを 1 行で書いてください。"
+      }
+    ]
+  },
+  {
+    "id": "W4-02",
+    "messages": [
+      {
+        "role": "user",
+        "content": "次の Go の関数にはバグがあります。何が起きるかを説明し、修正版を示してください。\n\n```go\nfunc twoSum(nums []int, target int) []int {\n\tseen := map[int]int{}\n\tfor i, n := range nums {\n\t\tif j, ok := seen[n]; ok {\n\t\t\treturn []int{j, i}\n\t\t}\n\t\tseen[target-n] = i\n\t}\n\treturn nil\n}\n```"
+      }
+    ]
+  },
+  {
+    "id": "W4-03",
+    "messages": [
+      {
+        "role": "user",
+        "content": "日本の国民の祝日を列挙し、そのうち日付が年によって移動するものについて、移動の規則を説明してください。"
+      }
+    ]
+  }
+]

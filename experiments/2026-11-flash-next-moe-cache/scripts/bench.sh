@@ -36,7 +36,7 @@ for config in $CONFIGS; do
   t0=$(date +%s)
   until curl -sf "$url/health" >/dev/null 2>&1; do sleep 5; [ $(( $(date +%s) - t0 )) -gt 2400 ] && { echo "load timeout" | tee -a "$LOADLOG"; break; }; done
   echo "   loaded in $(( $(date +%s) - t0 )) s; vram=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1) MiB; $(free -m | awk '/Mem:/{print "ram_used="$3"MiB cache="$6"MiB"}')" | tee -a "$LOADLOG"
-  docker logs llama-swap --since 40m 2>&1 | grep -iE "moe|cache|lazy|offload|CPU buffer|CUDA0 buffer|KV self size|compute buffer" | tail -12 | sed 's/^/   /' | tee -a "$LOADLOG"
+  { docker logs llama-swap --since 40m 2>&1 | grep -iE "moe|cache|lazy|offload|CPU buffer|CUDA0 buffer|KV self size|compute buffer" || true; } | tail -12 | sed 's/^/   /' | tee -a "$LOADLOG"
   for block in $(seq 1 "$REPEATS"); do
     for pf in scripts/data/w4_prompts.json scripts/data/prompts_long.json; do
       wl=$(basename "$pf" .json)

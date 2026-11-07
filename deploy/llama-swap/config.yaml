@@ -28,6 +28,53 @@ macros:
     --metrics
 
 models:
+  # --- Qwen3.8-Flash-Next(125B MoE、活性 6B + 51B n-gram 表)を 16 GB + RAM 32 GB で回す実験 ---
+  # experiments/2026-11-flash-next-moe-cache。experts は全部 CPU(--cpu-moe)に置き、頻出 experts を
+  # VRAM のキャッシュ(--moe-cache-mib)に載せる。28.8 GB の n-gram 表(IQ4_NL)は --lazy-mode auto で
+  # mmap から行単位に読む(4 GiB 超のテンソルは常駐させない)。llama.cpp build 12182 以降が要る。
+  # 32 GB RAM に本体 55 GB は載らないので、残りはページキャッシュ + SATA SSD。速度は実測で確かめる。
+  qwen38-flash-next-iq3xxs:
+    name: Qwen3.8-Flash-Next (UD-IQ3_XXS) / moe-cache 9 GB
+    description: experts CPU + VRAM キャッシュ 9 GiB、n-gram 表は lazy mmap、32k、KV q8_0
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.8-Flash-Next-GGUF:UD-IQ3_XXS
+      --no-mmproj
+      --cpu-moe --moe-cache-mib 9216
+      --lazy-mode auto
+      --ctx-size 32768
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0
+
+  qwen38-flash-next-iq3xxs-cache12g:
+    name: Qwen3.8-Flash-Next (UD-IQ3_XXS) / moe-cache 12 GB
+    description: キャッシュを 12 GiB に広げた版。VRAM に収まらなければ 9 GB 版を使う
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.8-Flash-Next-GGUF:UD-IQ3_XXS
+      --no-mmproj
+      --cpu-moe --moe-cache-mib 12288
+      --lazy-mode auto
+      --ctx-size 32768
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0
+
+  qwen38-flash-next-iq3xxs-nocache:
+    name: Qwen3.8-Flash-Next (UD-IQ3_XXS) / no moe-cache
+    description: 比較用。experts を CPU に置くだけでキャッシュ無し
+    cmd: |
+      llama-server ${common}
+      -hf unsloth/Qwen3.8-Flash-Next-GGUF:UD-IQ3_XXS
+      --no-mmproj
+      --cpu-moe
+      --lazy-mode auto
+      --ctx-size 32768
+      -ctk q8_0 -ctv q8_0
+      -b 2048 -ub 512
+      --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0
+
   # --- ベンチ計画 v2 の基準点(V-3)。Qwen3.5-9B Q8_0・完全 GPU 内 ---
   # --cache-reuse 256 と -lv 5 は V-2(プレフィックスキャッシュのヒット率)
   # を測るための設定。常用エントリとは分けてある。

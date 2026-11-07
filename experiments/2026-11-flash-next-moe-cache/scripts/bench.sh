@@ -15,6 +15,9 @@ SPEC_BENCH="${SPEC_BENCH:-$ROOT/../2026-10-speculative-decoding/scripts/spec_ben
 SWAP="${SWAP:-http://127.0.0.1:11435}"
 CONFIGS="${CONFIGS:-qwen38-flash-next-iq3xxs qwen38-flash-next-iq3xxs-cache12g qwen38-flash-next-iq3xxs-nocache}"
 REPEATS="${REPEATS:-2}"
+PROMPT_FILES="${PROMPT_FILES:-scripts/data/w4_prompts.json scripts/data/prompts_long.json}"
+ONLY_IDS="${ONLY_IDS:-.*}"   # prompt id の正規表現(例: "W4-.*|L1-.*")。長文は prefill が遅いと 1 本で数十分かかる
+N_PREDICT="${N_PREDICT:-300}"
 TS="${RESUME_TS:-$(date +%Y%m%d-%H%M%S)}"
 OUT="results/raw/bench-${TS}.jsonl"; mkdir -p results/raw
 LOADLOG="results/raw/load-${TS}.log"
@@ -38,13 +41,14 @@ for config in $CONFIGS; do
   echo "   loaded in $(( $(date +%s) - t0 )) s; vram=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1) MiB; $(free -m | awk '/Mem:/{print "ram_used="$3"MiB cache="$6"MiB"}')" | tee -a "$LOADLOG"
   { docker logs llama-swap --since 40m 2>&1 | grep -iE "moe|cache|lazy|offload|CPU buffer|CUDA0 buffer|KV self size|compute buffer" || true; } | tail -12 | sed 's/^/   /' | tee -a "$LOADLOG"
   for block in $(seq 1 "$REPEATS"); do
-    for pf in scripts/data/w4_prompts.json scripts/data/prompts_long.json; do
+    for pf in $PROMPT_FILES; do
       wl=$(basename "$pf" .json)
       for id in $(ids_of "$pf"); do
+        echo "$id" | grep -qE "^(${ONLY_IDS})$" || continue
         tmp=$(one "$pf" "$id")
         # 長文は要約なので 300 tok、W4 は思考込みで 300 tok(元実験と同じ)
         vm_before=$(awk '/^sda /{print $6}' /proc/diskstats)
-        python3 "$SPEC_BENCH" --url "$url" --endpoint chat --prompt-file "$tmp" --n-predict 300 \
+        python3 "$SPEC_BENCH" --url "$url" --endpoint chat --prompt-file "$tmp" --n-predict "$N_PREDICT" \
           --out "$OUT" --config "$config" --spec none --workload "$wl" --prompt-id "$id" --block "$block" \
           --timeout 3600 --nvidia-smi 1 >/dev/null || echo "   FAIL $config $id"
         vm_after=$(awk '/^sda /{print $6}' /proc/diskstats)

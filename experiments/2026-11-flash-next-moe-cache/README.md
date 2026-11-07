@@ -2,7 +2,7 @@
 
 125B MoE(活性 6B、n-gram 表 51B)を DRAM を増やさずに動かせるか。llama.cpp 本流の expert キャッシュ(`--cpu-moe --moe-cache-mib`)と n-gram 表の遅延読み込み(`--lazy-mode`)で、SATA SSD しか無い機でどこまで出るかを測る。
 
-**進行中。計画は [notes/00-plan.md](notes/00-plan.md)。**
+**完了(2026-11-08)。計画は [notes/00-plan.md](notes/00-plan.md)。**
 
 | 項目       | 値                                                                                         |
 | ---------- | ------------------------------------------------------------------------------------------ |
@@ -14,7 +14,14 @@
 
 ## 結論
 
-**今の機(SATA SSD、RAM 32 GB)では動くが常用は無理。** 9 GiB の expert キャッシュで、初見のプロンプトは prefill 3〜9 tok/s・decode 6〜7 tok/s、SSD の読み出しが 237 MB/s で張り付いたまま(SATA の上限)。experts がキャッシュに乗った文だけ 41.6 tok/s 出るので、GPU 側の計算には余裕があり、**不足しているのはストレージ帯域だけ**。300 トークンの生成で 12〜18 GB を読むので、NVMe(3〜5 GB/s)に置けば読み出し時間が 10 分の 1 になり、decode 20〜30 tok/s 圏が見込める。DRAM 増設では本体 55 GB を全部は載せられず(64 GB でも n-gram 表と OS を除くとぎりぎり)、NVMe のほうが安く効く。
+**今の機(SATA SSD、RAM 32 GB)では動くが常用は無理。原因はストレージ帯域で、DRAM ではない。** 9 GiB の expert キャッシュ構成で、初見のプロンプトは prefill 中央値 3.8 tok/s・decode 6.9 tok/s。生成中は SATA SSD の読み出しが 230〜290 MB/s(実効上限)に張り付き、GPU 使用率は 0〜17%。同じ文の再送(experts がキャッシュ済み)なら 41.6 tok/s 出るので、計算側には余裕がある。キャッシュ無しだと decode 3.2 tok/s で、9 GiB のキャッシュは SSD 読み出しを 24% 減らして速度を 2.2 倍にするが、VRAM 16 GB では 9〜10 GiB が上限(12 GiB は起動しない)。
+
+| 構成(IQ3_XXS、32k ctx)              | VRAM    | 初見 prefill | 初見 decode   | SSD 読み出し / 100 tok | 再送 decode  |
+| ----------------------------------- | ------- | ------------ | ------------- | ---------------------- | ------------ |
+| experts CPU + VRAM キャッシュ 9 GiB | 15.1 GB | 3.8 tok/s    | **6.9 tok/s** | 4.2 GiB                | 15〜42 tok/s |
+| experts CPU、キャッシュ無し         | 5.9 GB  | 2.4 tok/s    | 3.2 tok/s     | 5.5 GiB                | 3.2 tok/s    |
+
+100 トークン生成するたびに 4〜5 GB を SSD から読む。NVMe(3〜5 GB/s)なら同じ読み出しが 1〜2 秒で済み、decode は 20〜30 tok/s 圏に入る見込み(この読み出し量が律速の全て)。DRAM を 64 GB にしても本体 55 GB は収まりきらず、SSD 読み出しを減らせるだけで消せない。**買うなら 1 TB の Gen4 NVMe(2 万円台)が先で、DRAM は後**。ただし prefill は NVMe でも数十 tok/s 止まりと見込まれ、Claude Code の長い入力には向かない。チャット・要約用途なら NVMe 追加で実用圏。
 
 ## 計測条件
 
@@ -41,17 +48,29 @@
 - **prefill は decode より遅い**(3〜9 tok/s)。1 トークンごとに違う experts を踏むので、ミスが最も多い局面。2 万トークンの Claude Code の入力なら 40 分前後で、常用は不可
 - 比較: Qwen3.6-35B-A3B IQ3_XXS(全部 VRAM)は decode 70 tok/s 台、prefill 数百 tok/s(2026-10 の実験)
 
+### キャッシュ無し(`qwen38-flash-next-iq3xxs-nocache`)と 12 GiB
+
+- キャッシュ無し: 読み込み 412 s、VRAM 5.9 GB。初見 prefill 1.0〜2.5 tok/s、decode 2.5〜4.4 tok/s、300 tok で SSD 13〜22 GB(1k 要約は 42 GB)。2 反復目も改善しない
+- 12 GiB キャッシュ: llama-server が起動直後に落ちる(VRAM 超過。9 GiB 構成のピークが 15.1 GB)。上限は 9.5〜10 GiB
+- 集計は `results/summary.md`(`scripts/aggregate.py`、初見 = prompt_n ≥ 10、再送 = 接頭辞キャッシュで prompt_n < 10)
+
 ## 落とし穴
 
-| 罠                             | 症状                                                                                       | 対処                                 |
-| ------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------ |
-| `hf download` の既定キャッシュ | 新しい hf CLI は hub キャッシュを別レイアウト(xet)で書き、llama-server の `-hf` が拾えない | `--local-dir` で直置きし `-m` で指す |
+| 罠                                           | 症状                                                                                                                 | 対処                                                             |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `hf download` の既定キャッシュ               | 新しい hf CLI は hub キャッシュを別レイアウト(xet)で書き、llama-server の `-hf` が拾えない                           | `--local-dir` で直置きし `-m` で指す                             |
+| compose のプロジェクト名でボリュームが変わる | `deploy/llama-swap` で `up` すると `llama-swap_llama-cache` が新規に作られ、220 GB の `llama_llama-cache` が見えない | compose の `volumes:` に `name:` + `external: true` を書いて固定 |
+| `--moe-cache-mib` の上限                     | 12 GiB で起動せず(エラーは llama-swap のログに出ない)                                                                | 9 GiB 構成の VRAM ピーク(15.1 GB)から逆算。10 GiB 前後が限界     |
+| `pkill -f` が自分に当たる                    | ssh で渡したコマンド文字列自体がパターンに一致し、ssh が 255 で落ちる                                                | `bash -s` のヒアドキュメントで実行する                           |
+| llama-swap のアンロード                      | `POST /unload` は効かず `GET /unload`                                                                                | 計測の切替は llama-swap に任せ、終わったら `GET /unload`         |
 
 ## ファイル
 
-| パス               | 内容                                         |
-| ------------------ | -------------------------------------------- |
-| `notes/00-plan.md` | 問い・構成・計測設計                         |
-| `scripts/bench.sh` | 構成 × プロンプト × 反復の計測(GPU 機で実行) |
-| `scripts/data/`    | W4(短い推論 3 本)と合成長文 3 本             |
-| `results/raw/`     | JSONL と読み込みログ(commit 対象外)          |
+| パス                   | 内容                                         |
+| ---------------------- | -------------------------------------------- |
+| `notes/00-plan.md`     | 問い・構成・計測設計                         |
+| `scripts/bench.sh`     | 構成 × プロンプト × 反復の計測(GPU 機で実行) |
+| `scripts/data/`        | W4(短い推論 3 本)と合成長文 3 本             |
+| `results/raw/`         | JSONL と読み込みログ(commit 対象外)          |
+| `scripts/aggregate.py` | JSONL を構成ごとに集計(初見 / 再送を分ける)  |
+| `results/summary.md`   | 集計表                                       |

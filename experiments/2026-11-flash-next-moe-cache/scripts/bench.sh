@@ -62,7 +62,12 @@ lines=p.read_text().splitlines()
 r=json.loads(lines[-1]); r["sda_read_mib"]=round((int(sys.argv[3])-int(sys.argv[2]))*512/2**20,1)
 lines[-1]=json.dumps(r,ensure_ascii=False); p.write_text("\n".join(lines)+"\n")
 PY
-        [ -f "$OUT" ] && tail -1 "$OUT" | python3 -c 'import json,sys; r=json.loads(sys.stdin.read()); m=r.get("metrics",{}); print(f"   {r[\"config\"]} {r[\"prompt_id\"]} b{r[\"block\"]}: prompt {m.get(\"prefill_tok_s\")} tok/s, decode {m.get(\"decode_tok_s\")} tok/s, wall {r.get(\"wall_s\")} s, sda_read {r.get(\"sda_read_mib\")} MiB, vram {r.get(\"gpu\",{}).get(\"vram_peak_mib\")}")'
+        [ -f "$OUT" ] && python3 - "$OUT" <<'PY'
+import json,sys
+r=json.loads(open(sys.argv[1]).read().splitlines()[-1]); m=r.get("metrics") or {}
+f=lambda v: None if v is None else round(v,2)
+print(f"   {r['config']} {r['prompt_id']} b{r['block']}: prompt_n {m.get('prompt_n')} prefill {f(m.get('prefill_tok_s'))} tok/s, decode {f(m.get('decode_tok_s'))} tok/s (n={m.get('predicted_n')}), wall {r.get('wall_s')} s, sda_read {r.get('sda_read_mib')} MiB, vram {(r.get('gpu') or {}).get('vram_peak_mib')}", flush=True)
+PY
       done
     done
   done

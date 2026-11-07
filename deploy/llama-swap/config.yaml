@@ -48,18 +48,8 @@ models:
       -b 2048 -ub 512
       --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0
 
-  qwen38-flash-next-iq3xxs-cache12g:
-    name: Qwen3.8-Flash-Next (UD-IQ3_XXS) / moe-cache 12 GB
-    description: キャッシュを 12 GiB に広げた版。VRAM に収まらなければ 9 GB 版を使う
-    cmd: |
-      llama-server ${common}
-      -m /root/.cache/llama.cpp/flash-next/UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00004.gguf
-      --cpu-moe --moe-cache-mib 12288
-      --lazy-mode auto
-      --ctx-size 32768
-      -ctk q8_0 -ctv q8_0
-      -b 2048 -ub 512
-      --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0
+  # 12 GiB キャッシュは起動しない(9 GiB 構成で VRAM ピーク 15.1 GB。残り 0.9 GB しか無い)。
+  # 上限はおそらく 9.5〜10 GiB。
 
   qwen38-flash-next-iq3xxs-nocache:
     name: Qwen3.8-Flash-Next (UD-IQ3_XXS) / no moe-cache

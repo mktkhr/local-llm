@@ -48,11 +48,11 @@ for config in $CONFIGS; do
         echo "$id" | grep -qE "^(${ONLY_IDS})$" || continue
         tmp=$(one "$pf" "$id")
         # 長文は要約なので 300 tok、W4 は思考込みで 300 tok(元実験と同じ)
-        vm_before=$(awk '/^sda /{print $6}' /proc/diskstats)
+        vm_before=$(awk '$3=="sda"{print $6}' /proc/diskstats)
         python3 "$SPEC_BENCH" --url "$url" --endpoint chat --prompt-file "$tmp" --n-predict "$N_PREDICT" \
           --out "$OUT" --config "$config" --spec none --workload "$wl" --prompt-id "$id" --block "$block" \
           --timeout 3600 --nvidia-smi 1 >/dev/null || echo "   FAIL $config $id"
-        vm_after=$(awk '/^sda /{print $6}' /proc/diskstats)
+        vm_after=$(awk '$3=="sda"{print $6}' /proc/diskstats)
         # 直前の行に SATA SSD の読み出しセクタ数(512 B)を足す
         python3 - "$OUT" "$vm_before" "$vm_after" <<'PY'
 import json,sys,pathlib

@@ -107,8 +107,19 @@ services:
       retries: 3
       start_period: 10s
 
+# ボリュームは旧 compose プロジェクト名 "llama" のものを使い続ける(GGUF 220 GB と ccshim ログが入っている)。
+# ディレクトリ名から導かれるプロジェクト名 "llama-swap" で up すると空のボリュームが新しく作られてしまうため、
+# 名前を固定して external にする。
 volumes:
   llama-cache:
+    name: llama_llama-cache
+    external: true
   ccshim-log:
+    name: llama_ccshim-log
+    external: true
   ccshim-log-c:
+    name: llama_ccshim-log-c
+    external: true
   ccshim-log-d:
+    name: llama_ccshim-log-d
+    external: true

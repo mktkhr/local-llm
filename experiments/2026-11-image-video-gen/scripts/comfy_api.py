@@ -52,7 +52,7 @@ def graph_z_image_turbo(prompt: str, seed: int, width: int, height: int, steps: 
 GRAPHS = {"z-image-turbo": graph_z_image_turbo}
 
 
-def _json(url: str, data: dict | None = None, timeout: float = 60):
+def _json(url: str, data: dict | None = None, timeout: float = 600):
     req = urllib.request.Request(url, data=json.dumps(data).encode() if data is not None else None,
                                  headers={"Content-Type": "application/json"})
     try:

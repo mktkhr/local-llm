@@ -2,7 +2,7 @@
 
 16 GB + RAM 32 GB で動く画像生成(Qwen-Image 2.1 / FLUX.2 / Z-Image / Krea 2 / HiDream-O1)と動画生成(Wan 2.2 / HunyuanVideo 1.5 / LTX-2.5 / Kandinsky 6.0 / CogVideoX)を、品質最優先で比較し、常用構成を決める。
 
-**進行中(Phase 1 画像、Phase 1b 無検閲系モデルとの挙動差、Phase 2 動画 T2V まで完了。FLUX.3 Klein・FLUX.2 klein 9B・LTX-2.5 は gated repo のためスキップ)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
+**進行中(Phase 1 画像、Phase 1b 無検閲系、Phase 1c MiniMax H3-Image、Phase 2 動画 T2V まで完了。FLUX.3 Klein・FLUX.2 klein 9B・LTX-2.5 は gated repo のためスキップ)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
 
 | 項目       | 値                                                                        |
 | ---------- | ------------------------------------------------------------------------- |
@@ -33,6 +33,8 @@
 | Wan 2.2 14B fp8(high/low) | 832×480  | 11 min    | 4    | 3    | 4      | 4      | 4            | 19          |
 | Wan 2.2 14B fp8           | 1280×720 | 41 min    | 5    | 4    | 4      | 4      | 4            | 21(V1 のみ) |
 | Wan 2.2 TI2V-5B fp16      | 1280×704 | **4 min** | 3    | 3    | 4      | 4      | 4            | 18          |
+
+11 月 10 日公開の **MiniMax H3-Image**(33B dense DiT、6 steps、4K ネイティブ)を Phase 1c で追加した。pruned W4A8(12.6 GB)の DiT と Qwen3-VL-32B エンコーダ(nvfp4 15.7 GB、Ada ではエミュレーション)で 16 GB に載り、2048×2048 が **36 s / 枚**(エンコーダ常駐時)。文字・複数人物・数と配置はすべて正確で、**写実(肌・泥・水・フィルム調の空気感)は Phase 1 の全構成より上**。弱点は RAM(エンコーダで 28 GB を使いスワップ気味、アイドル後の 1 枚目は 2〜3 分)と、有効解像度が 4 MP 以上で 1K が範囲外なこと、建築のような硬い構図で画面の一部しか写さない癖。品質最優先の常用は H3-Image(4 MP)、速度と軽さは Krea 2 Turbo int8 という使い分けになる。
 
 無検閲系モデル(Phase 1b: Chroma1-HD、Z-Image Turbo の NSFW / CyberRealistic ファインチューン、Pony V7、Illustrious XL、Juggernaut XL)と公式モデルを、美術ヌード・水着・下着カタログ・流血・武器・ホラーなど 8 本の境界プロンプトで比べた結果、**公式モデル(Qwen-Image 2.1 / Krea 2 / Z-Image)に回避行動は無く、全プロンプトを指示どおり描いた**。服を足す・ぼかす・体を崩すは 1 枚も出ず、Z-Image Turbo の NSFW ファインチューンは同 seed で公式とほぼ同じ絵になる。露骨でない範囲では無検閲モデルを選ぶ理由が無く、一般品質は公式が上(Chroma は暗く解像感が落ちる、Illustrious は自然文を読めずアニメ化、Juggernaut / Pony は 2024〜25 年水準)。
 
@@ -79,6 +81,12 @@
 - 境界プロンプト 8 本(`scripts/data/prompts_boundary.json`): 美術ヌード(19 世紀アカデミック油彩)/ 水着 / 流血 / 武器 / ホラー / 喫煙・刺青 / 下着カタログ / 男性の上半身。未成年・実在人物は対象外
 - 構成(`scripts/data/phase1b_models.json`): 公式対照 4(Qwen 2.1 int8、Krea 2 int8、Z-Image Turbo、Z-Image Base)+ Chroma1-HD(GGUF Q8 + t5xxl fp8、公式テンプレ)、Z-Image Turbo NSFW v2(GGUF Q8)、CyberRealistic Z-Image v9(GGUF Q8)、Pony V7 base(公式配布の PNG 埋め込みワークフロー)、Illustrious XL v2.0、Juggernaut XL v9(SDXL 簡易テンプレ)。seed 1,2 × 境界 8 本 = 160 枚、さらに新規 6 構成で標準 8 本 × seed 1
 - 生データ `results/raw/phase1b/`(commit 対象外)、集計 `results/phase1b-boundary-summary.md` / `results/phase1b-standard-summary.md`、シート `results/phase1b-sheets/`
+
+### Phase 1c: MiniMax H3-Image(2026-11-13)
+
+- ComfyUI を 0.45.2(`yanwk/comfyui-boot:cu130-slim-v2` 2026-11-11 版、テンプレート 0.11.106)に更新。公式テンプレート `image_minimax_h3_image_t2i` を取り込み、プロンプト拡張(Qwen3.5-9B W4A8 による書き換え。テンプレートは常に on)を `23:5:prompt=RAW` で切って生の文を Conditioning に直結
+- 構成(`scripts/data/phase1c_models.json`): DiT pruned W4A8 12.6 GB × エンコーダ nvfp4 15.7 GB / int8 27 GB、プロンプト拡張 on/off。公式既定の 4 MP(2048×2048、6 steps、cfg 1、euler/simple)。P1〜P8 × seed 1 を nvfp4 で、P1〜P3 を他 2 構成で
+- 生データ `results/raw/phase1c/`、集計 `results/phase1c-summary.md`、シート `results/phase1c-sheets/`(Krea 2 / Qwen 2.1 の 2K・1K との並び、エンコーダと拡張の比較)
 
 ### Phase 2: 動画(2026-11-03〜04)
 
@@ -130,6 +138,24 @@ seed 1 の比較シート([results/phase1-sheets/](results/phase1-sheets/))を�
 | Z-Image Base bf16   | 169 s            | 15.9 GB     | 2K では英語副題が「Book                                                                    | Fair」と崩れ余計な記号も入る。棚田は 2K でも畦が整いすぎ。16 GB では時間も見合わない |
 
 1K → 2K で時間は 3.7〜5.5 倍(画素 4 倍)。VRAM はどれも 16 GB に収まる(HiDream は余裕あり)。生データは `results/raw/phase1/runs-2k.jsonl`、集計は `results/phase1-2k-summary.md`。
+
+### Phase 1c: MiniMax H3-Image(4 MP、seed 1)
+
+| 構成                                         | 1 枚(エンコーダ常駐時 中央値) | 初回 / アイドル後 | VRAM    | RAM(プロセス) | 備考                                                      |
+| -------------------------------------------- | ----------------------------- | ----------------- | ------- | ------------- | --------------------------------------------------------- |
+| DiT W4A8 + エンコーダ nvfp4                  | **36 s**                      | 125〜440 s        | 15.8 GB | 約 28 GB      | nvfp4 は Ada でエミュレーション。出力は int8 版とほぼ同一 |
+| DiT W4A8 + エンコーダ int8                   | 55 s                          | 167 s             | 15.9 GB | 約 28 GB      | 同 seed で nvfp4 とほぼ同じ絵                             |
+| 同上 + プロンプト拡張 on                     | 103 s                         | 184 s             | 15.9 GB | 約 28 GB      | 構図が変わる(P3 が横顔に)。品質が上がるとは言えない       |
+| (参考)DiT + VAE だけ(条件付けキャッシュ済み) | 23 s(4 MP)/ 14 s(1 MP)        |                   |         |               | 時間の大半はエンコーダ                                    |
+
+所見(Krea 2 / Qwen 2.1 の 2K・1K と並べて):
+
+- **文字(P1)**: 3 行とも正確。見出しはやや小さめにレイアウトされる
+- **複雑構図(P2)**: 料理人・黄色いレインコートの女性・新聞の男性の配置が正確で、湯気・蛍光灯・貼り紙の写実はフィルム写真に近い。Krea / Qwen より情報量が多い
+- **ポートレート(P3)**: 毛穴・皺・産毛の描き込みが最も細かく「無加工」に最も忠実。等倍で見ると刻みすぎの感もある
+- **棚田(P4)**: 畦が不揃いで泥と水面の質感がある。利用者が Z-Image を「整いすぎ」と評した軸で、最も自然
+- **商品(P5)**: 成立するが Krea のほうがカタログらしい。**建築(P7)**: プールとガラス壁の一部だけで片持ち屋根が写らない(Krea が上)。**りんご(P8)**: 3 個・タグ・配置すべて正確
+- エンコーダ nvfp4 と int8 は同 seed でほぼ同一。nvfp4 のほうが速いのでこちらを使う。プロンプト拡張は時間が 3 倍で構図が変わるだけなので off
 
 ### Phase 1b: 無検閲系モデル × 境界プロンプト
 
@@ -196,18 +222,21 @@ seed 1 の比較シート([results/phase2-sheets/](results/phase2-sheets/))を�
 
 ## 落とし穴
 
-| 罠                                         | 症状                                                                                                                                             | 対処                                                                                                                                                        |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RAM 32 GB にモデルが溜まる                 | ComfyUI は退避したモデルを CPU RAM に残す。構成を切り替えると前のモデルが残ったまま次を読み、スワップして数分固まる                              | 構成の切り替え時に `POST /free {"unload_models": true, "free_memory": true}` を呼ぶ(`run_matrix.py` が自動で呼ぶ)。RAM 25 GB → 4 GB に戻る                  |
-| ダウンロードと同時に計測しない             | `hf download` の書き込み(〜380 MB/s)でモデル読み込みが 10 MB/s まで落ち、初回が 3 分以上かかる                                                   | 計測中はダウンロードを `kill -STOP`、終わったら `kill -CONT`。`pkill -f` のパターンが自分の ssh シェルにも当たるので `bash -s` のヒアドキュメントで実行する |
-| ComfyUI の出力ファイル名                   | `filename_prefix` に `_00001_` の連番が付く。同じ prefix で再実行すると番号がずれる                                                              | 取得時に `prompt_seed.png` へ改名して保存する(`run_matrix.py`)                                                                                              |
-| 公式配布のワークフローが PNG にしか無い    | Pony V7 は ComfyUI ワークフローを PNG 画像に埋め込んで配布(single-file checkpoint に text encoder が無く、専用ローダ構成が要る)                  | PNG の tEXt チャンク `workflow` を取り出してテンプレート化(`image_pony_v7_simple.json`)。PreviewImage は SaveImage に置換                                   |
-| ファイル追加後の `/object_info` キャッシュ | ローダのファイル一覧は起動時のキャッシュを使うので、追加したモデルが `run_matrix.py` の事前チェックで「無い」扱いになり構成ごと飛ばされる        | 追加後は `--refresh-object-info` を付ける                                                                                                                   |
-| 動画は 1 本 30 分を超える                  | `run_matrix.py` の完了待ち上限(1,800 s)に当たって error 扱い。サーバ側は生成を続け、次の投入が後ろに並ぶ                                         | `--timeout 14400` を付ける。タイムアウトした分はサーバのキャッシュが残っていれば再投入で即返るが、`/free` 後は再生成になる                                  |
-| VRAM に収まらないモデルの連続実行          | HunyuanVideo 1.5 fp16(16.6 GB)は 1 本目は通るが 2 本目で `VRAM grow failed`                                                                      | 構成に `"free_each": true` を付け、1 件ごとに `/free` を呼ぶ                                                                                                |
-| 1080p 超解像の OOM                         | Hunyuan の公式 SR 枝(720p → 1920×1080)は 121 フレームだと 1080p のサンプラーで OOM(7.4 GB 使用中に 3.8 GB 要求)                                  | フレーム数を 61 に落として検証。恒久策は SR 用のタイル分割か、VRAM の大きい GPU                                                                             |
-| 電力制限を途中で変えると行が混ざる         | `power_limit_w` は `run_matrix.py` の開始時に 1 回だけ読む                                                                                       | 変えたら新しい実行として分ける。Phase 2 の Wan 14B 480p 後半 3 本は 250 W で走った                                                                          |
-| サブグラフ入りテンプレートの widget 値     | サブグラフノードの `widgets_values` はノード側の inputs 順ではなく **サブグラフ定義の inputs 順**。ずれると steps に 4096 が入る等の無言の誤動作 | `tpl2api.py` は定義順で割り当て、テストで公式テンプレートの既定値(steps 25 / cfg 1 など)を固定している                                                      |
+| 罠                                                   | 症状                                                                                                                                             | 対処                                                                                                                                                        |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RAM 32 GB にモデルが溜まる                           | ComfyUI は退避したモデルを CPU RAM に残す。構成を切り替えると前のモデルが残ったまま次を読み、スワップして数分固まる                              | 構成の切り替え時に `POST /free {"unload_models": true, "free_memory": true}` を呼ぶ(`run_matrix.py` が自動で呼ぶ)。RAM 25 GB → 4 GB に戻る                  |
+| ダウンロードと同時に計測しない                       | `hf download` の書き込み(〜380 MB/s)でモデル読み込みが 10 MB/s まで落ち、初回が 3 分以上かかる                                                   | 計測中はダウンロードを `kill -STOP`、終わったら `kill -CONT`。`pkill -f` のパターンが自分の ssh シェルにも当たるので `bash -s` のヒアドキュメントで実行する |
+| ComfyUI の出力ファイル名                             | `filename_prefix` に `_00001_` の連番が付く。同じ prefix で再実行すると番号がずれる                                                              | 取得時に `prompt_seed.png` へ改名して保存する(`run_matrix.py`)                                                                                              |
+| 公式配布のワークフローが PNG にしか無い              | Pony V7 は ComfyUI ワークフローを PNG 画像に埋め込んで配布(single-file checkpoint に text encoder が無く、専用ローダ構成が要る)                  | PNG の tEXt チャンク `workflow` を取り出してテンプレート化(`image_pony_v7_simple.json`)。PreviewImage は SaveImage に置換                                   |
+| ファイル追加後の `/object_info` キャッシュ           | ローダのファイル一覧は起動時のキャッシュを使うので、追加したモデルが `run_matrix.py` の事前チェックで「無い」扱いになり構成ごと飛ばされる        | 追加後は `--refresh-object-info` を付ける                                                                                                                   |
+| 動画は 1 本 30 分を超える                            | `run_matrix.py` の完了待ち上限(1,800 s)に当たって error 扱い。サーバ側は生成を続け、次の投入が後ろに並ぶ                                         | `--timeout 14400` を付ける。タイムアウトした分はサーバのキャッシュが残っていれば再投入で即返るが、`/free` 後は再生成になる                                  |
+| VRAM に収まらないモデルの連続実行                    | HunyuanVideo 1.5 fp16(16.6 GB)は 1 本目は通るが 2 本目で `VRAM grow failed`                                                                      | 構成に `"free_each": true` を付け、1 件ごとに `/free` を呼ぶ                                                                                                |
+| 1080p 超解像の OOM                                   | Hunyuan の公式 SR 枝(720p → 1920×1080)は 121 フレームだと 1080p のサンプラーで OOM(7.4 GB 使用中に 3.8 GB 要求)                                  | フレーム数を 61 に落として検証。恒久策は SR 用のタイル分割か、VRAM の大きい GPU                                                                             |
+| 電力制限を途中で変えると行が混ざる                   | `power_limit_w` は `run_matrix.py` の開始時に 1 回だけ読む                                                                                       | 変えたら新しい実行として分ける。Phase 2 の Wan 14B 480p 後半 3 本は 250 W で走った                                                                          |
+| サブグラフ入りテンプレートの widget 値               | サブグラフノードの `widgets_values` はノード側の inputs 順ではなく **サブグラフ定義の inputs 順**。ずれると steps に 4096 が入る等の無言の誤動作 | `tpl2api.py` は定義順で割り当て、テストで公式テンプレートの既定値(steps 25 / cfg 1 など)を固定している                                                      |
+| コンテナ再作成でモデルディレクトリが root 所有に戻る | 新イメージで `compose up` した後、`mv` が Permission denied                                                                                      | alpine で `chown -R` し直す(Phase 0 と同じ)                                                                                                                 |
+| `hf download` の xet 転送が止まる                    | 1.1 GB の VAE が 96% で停止、回線は 0 MB/s                                                                                                       | `HF_HUB_DISABLE_XET=1` で再実行                                                                                                                             |
+| H3 のエンコーダで RAM が尽きる                       | Qwen3-VL-32B(nvfp4 / int8)を CPU 側に置くとプロセスが 28 GB を使い、スワップしてサーバが 60 s 以上応答しない                                     | クライアントの HTTP タイムアウトを 600 s に。アイドル後の 1 枚目は 2〜5 分かかるものとして扱う                                                              |
 
 ## 次
 

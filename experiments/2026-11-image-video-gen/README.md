@@ -2,7 +2,7 @@
 
 16 GB + RAM 32 GB で動く画像生成(Qwen-Image 2.1 / FLUX.2 / Z-Image / Krea 2 / HiDream-O1)と動画生成(Wan 2.2 / HunyuanVideo 1.5 / LTX-2.5 / Kandinsky 6.0 / CogVideoX)を、品質最優先で比較し、常用構成を決める。
 
-**進行中(Phase 1 画像、Phase 1b 無検閲系、Phase 1c MiniMax H3-Image、Phase 2 動画 T2V まで完了。FLUX.3 Klein・FLUX.2 klein 9B・LTX-2.5 は gated repo のためスキップ)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
+**一区切り(Phase 1 画像、Phase 1b 無検閲系、Phase 1c MiniMax H3-Image、Phase 2 動画 T2V まで完了。GPU 機の ComfyUI とモデルは 2026-11-13 に撤去済みで、再開時は `config/compose.yml` から再構築する。FLUX.3 Klein・FLUX.2 klein 9B・LTX-2.5 は gated repo のためスキップ)。調査は [notes/00-research.md](notes/00-research.md)、計画は [notes/01-plan.md](notes/01-plan.md)、取得済みモデルは [notes/02-models.md](notes/02-models.md)。**
 
 | 項目       | 値                                                                        |
 | ---------- | ------------------------------------------------------------------------- |

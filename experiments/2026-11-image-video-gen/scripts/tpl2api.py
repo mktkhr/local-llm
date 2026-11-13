@@ -283,7 +283,7 @@ def prune_unreachable(api: dict, object_info: dict) -> None:
 
 # -------------------------------------------------------------------- 上書き
 TEXT_INPUTS = ("text", "prompt", "positive", "value", "string")
-FOLLOW_INPUTS = ("positive", "conditioning", "source", "text", "prompt", "string", "value", "on_false", "on_true", "replace")
+FOLLOW_INPUTS = ("positive", "conditioning", "source", "text", "prompt", "string", "value", "on_false", "on_true", "replace", "json_string")
 SIZE_TYPES_HINT = ("Latent", "Resolution", "Empty")
 
 

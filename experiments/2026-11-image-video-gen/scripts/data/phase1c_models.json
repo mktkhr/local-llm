@@ -1,0 +1,14 @@
+[
+  {"label": "h3-w4a8-enc-nvfp4", "template": "image_minimax_h3_image_t2i",
+   "sets": ["23:5:prompt=RAW", "UNETLoader.unet_name=minimax_h3_image_pruned_w4a8.safetensors", "23:2:clip_name=qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"],
+   "note": "DiT pruned W4A8 12.6 GB(VRAM に収まる)+ エンコーダ Qwen3-VL-32B nvfp4 15.7 GB。プロンプト拡張 off(生の文を Conditioning に直結)。既定 4 MP"},
+  {"label": "h3-w4a8-enc-int8", "template": "image_minimax_h3_image_t2i",
+   "sets": ["23:5:prompt=RAW", "UNETLoader.unet_name=minimax_h3_image_pruned_w4a8.safetensors"],
+   "note": "エンコーダを公式既定の int8 27 GB に(VRAM 超過でオフロード)"},
+  {"label": "h3-int8-enc-int8", "template": "image_minimax_h3_image_t2i",
+   "sets": ["23:5:prompt=RAW"],
+   "note": "公式テンプレ既定(DiT int8 21 GB + エンコーダ int8 27 GB)。両方オフロード"},
+  {"label": "h3-w4a8-enc-int8-pe", "template": "image_minimax_h3_image_t2i",
+   "sets": ["UNETLoader.unet_name=minimax_h3_image_pruned_w4a8.safetensors"],
+   "note": "プロンプト拡張 on(テンプレ同梱の Qwen3.5-9B W4A8)。H3 は拡張済みキャプションで学習しているので効く可能性"}
+]

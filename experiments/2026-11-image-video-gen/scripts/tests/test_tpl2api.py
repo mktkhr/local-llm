@@ -202,3 +202,19 @@ class PreviewToSave(unittest.TestCase):
         self.assertEqual(preview_to_save(api, "p/q"), 1)
         self.assertEqual(api["1"], {"class_type": "SaveImage", "inputs": {"images": ["0", 0], "filename_prefix": "p/q"}})
         self.assertEqual(api["2"]["inputs"]["filename_prefix"], "x")
+
+
+class MiniMaxH3(unittest.TestCase):
+    def test_prompt_override_reaches_raw_prompt_through_expander_chain(self):
+        # 公式テンプレートはユーザー文 → StringReplace → TextGenerateV2(拡張) → JsonExtractString → Conditioning
+        api = to_api(load("image_minimax_h3_image_t2i.json"), OI)
+        api = apply_overrides(api, prompt="HELLO", seed=1)
+        raw = [v for v in api.values() if v["class_type"] == "PrimitiveStringMultiline" and v["inputs"]["value"] == "HELLO"]
+        self.assertEqual(len(raw), 1)
+
+    def test_set_literal_prompt_bypasses_expander(self):
+        api = to_api(load("image_minimax_h3_image_t2i.json"), OI, sets=["23:5:prompt=RAW"])
+        self.assertNotIn("TextGenerateV2", {v["class_type"] for v in api.values()})
+        api = apply_overrides(api, prompt="HELLO", seed=1)
+        cond = [v for v in api.values() if v["class_type"] == "MiniMaxH3ImageConditioning"][0]
+        self.assertEqual(cond["inputs"]["prompt"], "HELLO")

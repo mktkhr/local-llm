@@ -127,6 +127,26 @@ def sdxl_checkpoint(ckpt: str, prefix: str, *, steps: int, cfg: float, sampler: 
     return w.to_ui()
 
 
+def minimax_h3(prefix: str, width: int = 2048, height: int = 2048) -> dict:
+    """MiniMax H3-Image。Phase 1c の最良構成: DiT pruned W4A8 + Qwen3-VL-32B nvfp4、プロンプト拡張なし、
+    6 steps / cfg 1 / euler / simple。解像度は 4 MP 以上が有効範囲(既定 2048×2048)。"""
+    w = Workflow()
+    m = w.node("UNETLoader", ["minimax_h3_image_pruned_w4a8.safetensors", "default"], outputs=[("MODEL", "MODEL")], title="H3-Image DiT (W4A8)")
+    c = w.node("CLIPLoader", ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "minimax", "default"], outputs=[("CLIP", "CLIP")], title="Qwen3-VL-32B (nvfp4)")
+    v = w.node("VAELoader", ["minimax_h3_image_vae_fp16.safetensors"], outputs=[("VAE", "VAE")])
+    cond = w.node("MiniMaxH3ImageConditioning", [PROMPT, width, height],
+                  inputs=[("clip", "CLIP", (c, 0)), ("vae", "VAE", (v, 0))],
+                  outputs=[("positive", "CONDITIONING"), ("LATENT", "LATENT")], title="Prompt + size (拡張なし)", size=(460, 260))
+    zero = w.node("ConditioningZeroOut", [], inputs=[("conditioning", "CONDITIONING", (cond, 0))], outputs=[("CONDITIONING", "CONDITIONING")], title="Negative (cfg 1 なので無効)")
+    ks = w.node("KSampler", [0, "randomize", 6, 1.0, "euler", "simple", 1.0],
+                inputs=[("model", "MODEL", (m, 0)), ("positive", "CONDITIONING", (cond, 0)),
+                        ("negative", "CONDITIONING", (zero, 0)), ("latent_image", "LATENT", (cond, 1))],
+                outputs=[("LATENT", "LATENT")], size=(320, 262))
+    dec = w.node("VAEDecode", [], inputs=[("samples", "LATENT", (ks, 0)), ("vae", "VAE", (v, 0))], outputs=[("IMAGE", "IMAGE")])
+    w.node("SaveImage", [prefix], inputs=[("images", "IMAGE", (dec, 0))], size=(400, 400))
+    return w.to_ui()
+
+
 def build_all() -> dict[str, dict]:
     return {
         "01-z-image-turbo-official": z_image_turbo("z_image_turbo_bf16.safetensors", False, "ui/z-image-turbo"),
@@ -135,6 +155,7 @@ def build_all() -> dict[str, dict]:
         "04-chroma1-hd-q8": chroma("ui/chroma1-hd"),
         "05-pony-v7-base": pony_v7("ui/pony-v7"),
         "06-illustrious-xl-v2": sdxl_checkpoint("Illustrious-XL-v2.0.safetensors", "ui/illustrious-xl-v2", steps=28, cfg=6.0, sampler="euler_ancestral", scheduler="normal"),
+        "08-minimax-h3-image-w4a8": minimax_h3("ui/minimax-h3-image"),
         "07-juggernaut-xl-v9": sdxl_checkpoint("Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors", "ui/juggernaut-xl-v9", steps=30, cfg=5.0, sampler="dpmpp_2m", scheduler="karras"),
     }
 

@@ -39,3 +39,18 @@ class Builder(unittest.TestCase):
                     for inp, x in v["inputs"].items():
                         if isinstance(x, list):
                             self.assertIn(x[0], api, f"{name}: {k}.{inp}")
+
+
+class H3(unittest.TestCase):
+    def test_h3_workflow_wires_conditioning_latent_and_prompt(self):
+        from ui_workflow import minimax_h3
+        ui = minimax_h3("ui/h3")
+        api = to_api(ui, OI)
+        api = apply_overrides(api, prompt="HELLO", seed=1)
+        cond = [v for v in api.values() if v["class_type"] == "MiniMaxH3ImageConditioning"][0]
+        self.assertEqual(cond["inputs"]["prompt"], "HELLO")
+        self.assertEqual((cond["inputs"]["width"], cond["inputs"]["height"]), (2048, 2048))
+        ks = [v for v in api.values() if v["class_type"] == "KSampler"][0]["inputs"]
+        self.assertEqual(ks["steps"], 6)
+        self.assertEqual(api[ks["latent_image"][0]]["class_type"], "MiniMaxH3ImageConditioning")
+        self.assertEqual(ks["latent_image"][1], 1)

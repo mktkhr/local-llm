@@ -1,0 +1,248 @@
+{
+ "decode_tokens": 6864,
+ "refs": 2184078,
+ "groups": [
+  {
+   "layers": 37,
+   "expert_bytes": 1122304,
+   "refs": 2020441,
+   "distinct": 9415
+  },
+  {
+   "layers": 3,
+   "expert_bytes": 1228800,
+   "refs": 163637,
+   "distinct": 758
+  }
+ ],
+ "overlap": {
+  "observed": 2.361497934110137,
+  "independent": 0.725130408655849,
+  "pairs": 274458,
+  "per_layer": {
+   "0": {
+    "observed": 0.556,
+    "independent": 0.3742
+   },
+   "1": {
+    "observed": 1.4061,
+    "independent": 0.4179
+   },
+   "2": {
+    "observed": 1.7508,
+    "independent": 0.3299
+   },
+   "3": {
+    "observed": 1.6525,
+    "independent": 0.4655
+   },
+   "4": {
+    "observed": 1.8055,
+    "independent": 0.4985
+   },
+   "5": {
+    "observed": 2.0144,
+    "independent": 0.4586
+   },
+   "6": {
+    "observed": 2.2878,
+    "independent": 0.4978
+   },
+   "7": {
+    "observed": 2.239,
+    "independent": 0.5599
+   },
+   "8": {
+    "observed": 2.2336,
+    "independent": 0.5716
+   },
+   "9": {
+    "observed": 1.9321,
+    "independent": 0.514
+   },
+   "10": {
+    "observed": 1.9132,
+    "independent": 0.4697
+   },
+   "11": {
+    "observed": 1.8131,
+    "independent": 0.4729
+   },
+   "12": {
+    "observed": 1.8866,
+    "independent": 0.5066
+   },
+   "13": {
+    "observed": 2.1298,
+    "independent": 0.7406
+   },
+   "14": {
+    "observed": 2.1848,
+    "independent": 0.7042
+   },
+   "15": {
+    "observed": 2.02,
+    "independent": 0.5734
+   },
+   "16": {
+    "observed": 2.395,
+    "independent": 0.7869
+   },
+   "17": {
+    "observed": 2.2164,
+    "independent": 0.6673
+   },
+   "18": {
+    "observed": 2.3796,
+    "independent": 0.7702
+   },
+   "19": {
+    "observed": 2.3574,
+    "independent": 0.7909
+   },
+   "20": {
+    "observed": 2.1482,
+    "independent": 0.5945
+   },
+   "21": {
+    "observed": 2.1505,
+    "independent": 0.6165
+   },
+   "22": {
+    "observed": 2.0334,
+    "independent": 0.5617
+   },
+   "23": {
+    "observed": 2.1295,
+    "independent": 0.6645
+   },
+   "24": {
+    "observed": 2.0813,
+    "independent": 0.5634
+   },
+   "25": {
+    "observed": 2.2623,
+    "independent": 0.7472
+   },
+   "26": {
+    "observed": 2.3654,
+    "independent": 0.7788
+   },
+   "27": {
+    "observed": 2.3222,
+    "independent": 0.6441
+   },
+   "28": {
+    "observed": 2.7616,
+    "independent": 0.9199
+   },
+   "29": {
+    "observed": 2.7823,
+    "independent": 0.8247
+   },
+   "30": {
+    "observed": 3.1139,
+    "independent": 1.0106
+   },
+   "31": {
+    "observed": 3.3692,
+    "independent": 1.2693
+   },
+   "32": {
+    "observed": 3.3501,
+    "independent": 1.15
+   },
+   "33": {
+    "observed": 3.3809,
+    "independent": 1.1565
+   },
+   "34": {
+    "observed": 3.6525,
+    "independent": 1.3806
+   },
+   "35": {
+    "observed": 3.184,
+    "independent": 0.8752
+   },
+   "36": {
+    "observed": 3.5259,
+    "independent": 1.206
+   },
+   "37": {
+    "observed": 3.0326,
+    "independent": 0.9229
+   },
+   "38": {
+    "observed": 2.9835,
+    "independent": 1.0123
+   },
+   "39": {
+    "observed": 2.6596,
+    "independent": 0.9378
+   }
+  }
+ },
+ "time_fit": {
+  "t0_ms": 7.061,
+  "bw_gbs": 10.632,
+  "r2": 0.9995,
+  "points": [
+   {
+    "mib": 1024,
+    "measured_ms": 22.512,
+    "miss_mb_per_tok": 165.51,
+    "pred_ms": 22.627
+   },
+   {
+    "mib": 2048,
+    "measured_ms": 16.88,
+    "miss_mb_per_tok": 104.05,
+    "pred_ms": 16.847
+   },
+   {
+    "mib": 3072,
+    "measured_ms": 13.6,
+    "miss_mb_per_tok": 68.0,
+    "pred_ms": 13.457
+   },
+   {
+    "mib": 4096,
+    "measured_ms": 11.426,
+    "miss_mb_per_tok": 45.05,
+    "pred_ms": 11.298
+   },
+   {
+    "mib": 6144,
+    "measured_ms": 8.902,
+    "miss_mb_per_tok": 19.06,
+    "pred_ms": 8.853
+   },
+   {
+    "mib": 8192,
+    "measured_ms": 7.61,
+    "miss_mb_per_tok": 6.7,
+    "pred_ms": 7.691
+   },
+   {
+    "mib": 11100,
+    "measured_ms": 7.062,
+    "miss_mb_per_tok": 1.68,
+    "pred_ms": 7.219
+   }
+  ]
+ },
+ "other_labels": {
+  "pinned": [
+   {
+    "mib": 2048,
+    "measured_ms": 11.573,
+    "bw_gbs_fixed_t0": 23.06
+   },
+   {
+    "mib": 4096,
+    "measured_ms": 8.925,
+    "bw_gbs_fixed_t0": 24.17
+   }
+  ]
+ }
+}

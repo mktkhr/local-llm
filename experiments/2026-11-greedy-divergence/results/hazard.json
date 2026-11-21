@@ -1,0 +1,1557 @@
+[
+ {
+  "build": "b12182",
+  "determinism": {
+   "pairs": 17,
+   "identical_tokens": 17,
+   "identical_logprobs": 17
+  },
+  "delta_by_margin": [
+   {
+    "margin": "[0, 0.1)",
+    "n": 5,
+    "abs_p50": 0.0482,
+    "abs_p90": 0.3171
+   },
+   {
+    "margin": "[0.1, 0.3)",
+    "n": 10,
+    "abs_p50": 0.0951,
+    "abs_p90": 0.1666
+   },
+   {
+    "margin": "[0.3, 1)",
+    "n": 32,
+    "abs_p50": 0.0858,
+    "abs_p90": 0.29
+   },
+   {
+    "margin": "[1, 2)",
+    "n": 37,
+    "abs_p50": 0.0575,
+    "abs_p90": 0.2533
+   },
+   {
+    "margin": "[2, 4)",
+    "n": 67,
+    "abs_p50": 0.1141,
+    "abs_p90": 0.3069
+   },
+   {
+    "margin": "[4, 8)",
+    "n": 301,
+    "abs_p50": 0.1365,
+    "abs_p90": 0.5596
+   },
+   {
+    "margin": "[8, inf)",
+    "n": 10231,
+    "abs_p50": 0.166,
+    "abs_p90": 0.5719
+   }
+  ]
+ },
+ {
+  "build": "b12182",
+  "spec": "ngram-mod",
+  "n_runs": 17,
+  "n_delta": 5158,
+  "n_ref": 5158,
+  "abs_delta_q": {
+   "p50": 0.16256,
+   "p90": 0.57009,
+   "p99": 1.41551,
+   "max": 4.372049450955274
+  },
+  "observed_divergences": 0,
+  "expected_divergences": 1.67,
+  "brier": 0.0481,
+  "margin_at_D": [],
+  "calibration": [
+   {
+    "margin": "[0.03, 0.1)",
+    "at_risk": 1,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.38212
+   },
+   {
+    "margin": "[0.1, 0.3)",
+    "at_risk": 5,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.21598
+   },
+   {
+    "margin": "[0.3, 1.0)",
+    "at_risk": 15,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.04034
+   },
+   {
+    "margin": "[1.0, inf)",
+    "at_risk": 5151,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 1e-05
+   }
+  ],
+  "runs": [
+   {
+    "prompt_id": "E01",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 379,
+    "accepted": 310,
+    "p_div_pred": 0.164
+   },
+   {
+    "prompt_id": "E02",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 406,
+    "accepted": 248,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E03",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 58,
+    "drafts": 314,
+    "accepted": 286,
+    "p_div_pred": 0.32
+   },
+   {
+    "prompt_id": "E04",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 90,
+    "drafts": 260,
+    "accepted": 238,
+    "p_div_pred": 0.031
+   },
+   {
+    "prompt_id": "E05",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 366,
+    "accepted": 345,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E06",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 317,
+    "accepted": 312,
+    "p_div_pred": 0.688
+   },
+   {
+    "prompt_id": "E07",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 403,
+    "accepted": 345,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E08",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 359,
+    "accepted": 346,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E09",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 430,
+    "accepted": 369,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E10",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 337,
+    "accepted": 333,
+    "p_div_pred": 0.001
+   },
+   {
+    "prompt_id": "E11",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 346,
+    "accepted": 331,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E12",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 363,
+    "accepted": 346,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E13",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 375,
+    "accepted": 321,
+    "p_div_pred": 0.462
+   },
+   {
+    "prompt_id": "E14",
+    "kind": "edit",
+    "D": null,
+    "L": 396,
+    "p0": 23,
+    "drafts": 371,
+    "accepted": 371,
+    "p_div_pred": 0.001
+   },
+   {
+    "prompt_id": "W4-01",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": null,
+    "drafts": 0,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-02",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": null,
+    "drafts": 0,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-03",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": null,
+    "drafts": 0,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   }
+  ]
+ },
+ {
+  "build": "b12182",
+  "spec": "ngram-simple",
+  "n_runs": 17,
+  "n_delta": 5525,
+  "n_ref": 5525,
+  "abs_delta_q": {
+   "p50": 0.16474,
+   "p90": 0.56668,
+   "p99": 1.48876,
+   "max": 3.2978377342225826
+  },
+  "observed_divergences": 1,
+  "expected_divergences": 2.79,
+  "brier": 0.0965,
+  "margin_at_D": [
+   0.0554
+  ],
+  "calibration": [
+   {
+    "margin": "[0.03, 0.1)",
+    "at_risk": 4,
+    "events": 1,
+    "obs_hazard": 0.25,
+    "pred_hazard": 0.37661
+   },
+   {
+    "margin": "[0.1, 0.3)",
+    "at_risk": 5,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.2408
+   },
+   {
+    "margin": "[0.3, 1.0)",
+    "at_risk": 17,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.03949
+   },
+   {
+    "margin": "[1.0, inf)",
+    "at_risk": 5522,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 1e-05
+   }
+  ],
+  "runs": [
+   {
+    "prompt_id": "E01",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 358,
+    "accepted": 344,
+    "p_div_pred": 0.171
+   },
+   {
+    "prompt_id": "E02",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 449,
+    "accepted": 305,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E03",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 388,
+    "accepted": 307,
+    "p_div_pred": 0.653
+   },
+   {
+    "prompt_id": "E04",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 39,
+    "drafts": 392,
+    "accepted": 307,
+    "p_div_pred": 0.414
+   },
+   {
+    "prompt_id": "E05",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 377,
+    "accepted": 367,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E06",
+    "kind": "edit",
+    "D": 215,
+    "L": 400,
+    "p0": 11,
+    "drafts": 383,
+    "accepted": 340,
+    "p_div_pred": 0.41
+   },
+   {
+    "prompt_id": "E07",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 430,
+    "accepted": 366,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E08",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 413,
+    "accepted": 366,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E09",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 381,
+    "accepted": 381,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E10",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 428,
+    "accepted": 360,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E11",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 405,
+    "accepted": 368,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E12",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 389,
+    "accepted": 367,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E13",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 384,
+    "accepted": 344,
+    "p_div_pred": 0.48
+   },
+   {
+    "prompt_id": "E14",
+    "kind": "edit",
+    "D": null,
+    "L": 396,
+    "p0": 11,
+    "drafts": 381,
+    "accepted": 381,
+    "p_div_pred": 0.001
+   },
+   {
+    "prompt_id": "W4-01",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": 165,
+    "drafts": 381,
+    "accepted": 65,
+    "p_div_pred": 0.001
+   },
+   {
+    "prompt_id": "W4-02",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": null,
+    "drafts": 0,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-03",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": 317,
+    "drafts": 48,
+    "accepted": 3,
+    "p_div_pred": 0.66
+   }
+  ]
+ },
+ {
+  "build": "b12464",
+  "determinism": {
+   "pairs": 17,
+   "identical_tokens": 17,
+   "identical_logprobs": 17
+  },
+  "delta_by_margin": [
+   {
+    "margin": "[0, 0.1)",
+    "n": 2,
+    "abs_p50": 0.0817,
+    "abs_p90": 0.0817
+   },
+   {
+    "margin": "[0.1, 0.3)",
+    "n": 9,
+    "abs_p50": 0.125,
+    "abs_p90": 0.3916
+   },
+   {
+    "margin": "[0.3, 1)",
+    "n": 22,
+    "abs_p50": 0.1308,
+    "abs_p90": 0.2959
+   },
+   {
+    "margin": "[1, 2)",
+    "n": 26,
+    "abs_p50": 0.1658,
+    "abs_p90": 0.4192
+   },
+   {
+    "margin": "[2, 4)",
+    "n": 53,
+    "abs_p50": 0.1587,
+    "abs_p90": 0.4111
+   },
+   {
+    "margin": "[4, 8)",
+    "n": 253,
+    "abs_p50": 0.1239,
+    "abs_p90": 0.4623
+   },
+   {
+    "margin": "[8, inf)",
+    "n": 9338,
+    "abs_p50": 0.1645,
+    "abs_p90": 0.5502
+   }
+  ]
+ },
+ {
+  "build": "b12464",
+  "spec": "ngram-mod",
+  "n_runs": 17,
+  "n_delta": 4976,
+  "n_ref": 4976,
+  "abs_delta_q": {
+   "p50": 0.16485,
+   "p90": 0.54092,
+   "p99": 1.36558,
+   "max": 5.1152365213961275
+  },
+  "observed_divergences": 1,
+  "expected_divergences": 1.13,
+  "brier": 0.0483,
+  "margin_at_D": [
+   0.1502
+  ],
+  "calibration": [
+   {
+    "margin": "[0.1, 0.3)",
+    "at_risk": 3,
+    "events": 1,
+    "obs_hazard": 0.33333,
+    "pred_hazard": 0.24739
+   },
+   {
+    "margin": "[0.3, 1.0)",
+    "at_risk": 10,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.04453
+   },
+   {
+    "margin": "[1.0, inf)",
+    "at_risk": 4975,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 1e-05
+   }
+  ],
+  "runs": [
+   {
+    "prompt_id": "E01",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 379,
+    "accepted": 310,
+    "p_div_pred": 0.243
+   },
+   {
+    "prompt_id": "E02",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 406,
+    "accepted": 248,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E03",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 58,
+    "drafts": 314,
+    "accepted": 286,
+    "p_div_pred": 0.127
+   },
+   {
+    "prompt_id": "E04",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 90,
+    "drafts": 260,
+    "accepted": 238,
+    "p_div_pred": 0.04
+   },
+   {
+    "prompt_id": "E05",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 366,
+    "accepted": 345,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E06",
+    "kind": "edit",
+    "D": 215,
+    "L": 400,
+    "p0": 23,
+    "drafts": 324,
+    "accepted": 319,
+    "p_div_pred": 0.266
+   },
+   {
+    "prompt_id": "E07",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 403,
+    "accepted": 345,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E08",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 359,
+    "accepted": 346,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E09",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 430,
+    "accepted": 369,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E10",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 337,
+    "accepted": 333,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E11",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 346,
+    "accepted": 331,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E12",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 363,
+    "accepted": 346,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E13",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 23,
+    "drafts": 375,
+    "accepted": 321,
+    "p_div_pred": 0.454
+   },
+   {
+    "prompt_id": "E14",
+    "kind": "edit",
+    "D": null,
+    "L": 396,
+    "p0": 23,
+    "drafts": 371,
+    "accepted": 371,
+    "p_div_pred": 0.001
+   },
+   {
+    "prompt_id": "W4-01",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": null,
+    "drafts": 0,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-02",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": null,
+    "drafts": 0,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-03",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": null,
+    "drafts": 0,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   }
+  ]
+ },
+ {
+  "build": "b12464",
+  "spec": "ngram-simple",
+  "n_runs": 17,
+  "n_delta": 4727,
+  "n_ref": 4727,
+  "abs_delta_q": {
+   "p50": 0.16162,
+   "p90": 0.55212,
+   "p99": 1.3614,
+   "max": 3.515852689757253
+  },
+  "observed_divergences": 2,
+  "expected_divergences": 2.38,
+  "brier": 0.0847,
+  "margin_at_D": [
+   0.0268,
+   0.0382
+  ],
+  "calibration": [
+   {
+    "margin": "[0.01, 0.03)",
+    "at_risk": 1,
+    "events": 1,
+    "obs_hazard": 1.0,
+    "pred_hazard": 0.44066
+   },
+   {
+    "margin": "[0.03, 0.1)",
+    "at_risk": 1,
+    "events": 1,
+    "obs_hazard": 1.0,
+    "pred_hazard": 0.42183
+   },
+   {
+    "margin": "[0.1, 0.3)",
+    "at_risk": 6,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.25929
+   },
+   {
+    "margin": "[0.3, 1.0)",
+    "at_risk": 12,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.04573
+   },
+   {
+    "margin": "[1.0, inf)",
+    "at_risk": 4720,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 1e-05
+   }
+  ],
+  "runs": [
+   {
+    "prompt_id": "E01",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 358,
+    "accepted": 344,
+    "p_div_pred": 0.246
+   },
+   {
+    "prompt_id": "E02",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 449,
+    "accepted": 305,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E03",
+    "kind": "edit",
+    "D": 27,
+    "L": 400,
+    "p0": 12,
+    "drafts": 392,
+    "accepted": 311,
+    "p_div_pred": 0.491
+   },
+   {
+    "prompt_id": "E04",
+    "kind": "edit",
+    "D": 45,
+    "L": 400,
+    "p0": 39,
+    "drafts": 440,
+    "accepted": 309,
+    "p_div_pred": 0.422
+   },
+   {
+    "prompt_id": "E05",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 377,
+    "accepted": 367,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E06",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 376,
+    "accepted": 333,
+    "p_div_pred": 0.759
+   },
+   {
+    "prompt_id": "E07",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 430,
+    "accepted": 366,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E08",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 413,
+    "accepted": 366,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E09",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 381,
+    "accepted": 381,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E10",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 428,
+    "accepted": 360,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E11",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 405,
+    "accepted": 368,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E12",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 389,
+    "accepted": 367,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E13",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 384,
+    "accepted": 344,
+    "p_div_pred": 0.458
+   },
+   {
+    "prompt_id": "E14",
+    "kind": "edit",
+    "D": null,
+    "L": 396,
+    "p0": 11,
+    "drafts": 381,
+    "accepted": 381,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-01",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": null,
+    "drafts": 0,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-02",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": 385,
+    "drafts": 14,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-03",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": 362,
+    "drafts": 37,
+    "accepted": 4,
+    "p_div_pred": 0.0
+   }
+  ]
+ },
+ {
+  "build": "b12464-9b-q4km",
+  "determinism": {
+   "pairs": 17,
+   "identical_tokens": 17,
+   "identical_logprobs": 17
+  },
+  "delta_by_margin": [
+   {
+    "margin": "[0, 0.1)",
+    "n": 4,
+    "abs_p50": 0.1061,
+    "abs_p90": 0.1231
+   },
+   {
+    "margin": "[0.1, 0.3)",
+    "n": 12,
+    "abs_p50": 0.061,
+    "abs_p90": 0.1121
+   },
+   {
+    "margin": "[0.3, 1)",
+    "n": 26,
+    "abs_p50": 0.0619,
+    "abs_p90": 0.1367
+   },
+   {
+    "margin": "[1, 2)",
+    "n": 26,
+    "abs_p50": 0.0633,
+    "abs_p90": 0.17
+   },
+   {
+    "margin": "[2, 4)",
+    "n": 59,
+    "abs_p50": 0.0554,
+    "abs_p90": 0.1832
+   },
+   {
+    "margin": "[4, 8)",
+    "n": 316,
+    "abs_p50": 0.048,
+    "abs_p90": 0.1388
+   },
+   {
+    "margin": "[8, inf)",
+    "n": 4803,
+    "abs_p50": 0.043,
+    "abs_p90": 0.1228
+   }
+  ]
+ },
+ {
+  "build": "b12464-9b-q4km",
+  "spec": "ngram-simple",
+  "n_runs": 17,
+  "n_delta": 5246,
+  "n_ref": 5246,
+  "abs_delta_q": {
+   "p50": 0.04374,
+   "p90": 0.12524,
+   "p99": 0.27809,
+   "max": 1.1025787303660763
+  },
+  "observed_divergences": 2,
+  "expected_divergences": 0.9,
+  "brier": 0.0593,
+  "margin_at_D": [
+   0.0644,
+   0.0879
+  ],
+  "calibration": [
+   {
+    "margin": "[0, 0.01)",
+    "at_risk": 1,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.439
+   },
+   {
+    "margin": "[0.03, 0.1)",
+    "at_risk": 3,
+    "events": 2,
+    "obs_hazard": 0.66667,
+    "pred_hazard": 0.13788
+   },
+   {
+    "margin": "[0.1, 0.3)",
+    "at_risk": 12,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.01585
+   },
+   {
+    "margin": "[0.3, 1.0)",
+    "at_risk": 26,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.0003
+   },
+   {
+    "margin": "[1.0, inf)",
+    "at_risk": 5206,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.0
+   }
+  ],
+  "runs": [
+   {
+    "prompt_id": "E01",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 435,
+    "accepted": 286,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E02",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 449,
+    "accepted": 305,
+    "p_div_pred": 0.003
+   },
+   {
+    "prompt_id": "E03",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 46,
+    "drafts": 391,
+    "accepted": 310,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E04",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 35,
+    "drafts": 396,
+    "accepted": 315,
+    "p_div_pred": 0.003
+   },
+   {
+    "prompt_id": "E05",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 423,
+    "accepted": 320,
+    "p_div_pred": 0.162
+   },
+   {
+    "prompt_id": "E06",
+    "kind": "edit",
+    "D": 358,
+    "L": 400,
+    "p0": 11,
+    "drafts": 338,
+    "accepted": 259,
+    "p_div_pred": 0.594
+   },
+   {
+    "prompt_id": "E07",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 430,
+    "accepted": 366,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E08",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 413,
+    "accepted": 366,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E09",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 381,
+    "accepted": 381,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E10",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 489,
+    "accepted": 314,
+    "p_div_pred": 0.019
+   },
+   {
+    "prompt_id": "E11",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 456,
+    "accepted": 331,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E12",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 389,
+    "accepted": 367,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E13",
+    "kind": "edit",
+    "D": 215,
+    "L": 400,
+    "p0": 11,
+    "drafts": 365,
+    "accepted": 325,
+    "p_div_pred": 0.096
+   },
+   {
+    "prompt_id": "E14",
+    "kind": "edit",
+    "D": null,
+    "L": 396,
+    "p0": 11,
+    "drafts": 381,
+    "accepted": 381,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-01",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": null,
+    "drafts": 0,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-02",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": null,
+    "drafts": 0,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-03",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": 310,
+    "drafts": 109,
+    "accepted": 6,
+    "p_div_pred": 0.021
+   }
+  ]
+ },
+ {
+  "build": "b12464-9b-q8",
+  "determinism": {
+   "pairs": 17,
+   "identical_tokens": 17,
+   "identical_logprobs": 17
+  },
+  "delta_by_margin": [
+   {
+    "margin": "[0, 0.1)",
+    "n": 5,
+    "abs_p50": 0.054,
+    "abs_p90": 0.1009
+   },
+   {
+    "margin": "[0.1, 0.3)",
+    "n": 14,
+    "abs_p50": 0.0448,
+    "abs_p90": 0.1194
+   },
+   {
+    "margin": "[0.3, 1)",
+    "n": 29,
+    "abs_p50": 0.0342,
+    "abs_p90": 0.1046
+   },
+   {
+    "margin": "[1, 2)",
+    "n": 32,
+    "abs_p50": 0.0436,
+    "abs_p90": 0.1092
+   },
+   {
+    "margin": "[2, 4)",
+    "n": 70,
+    "abs_p50": 0.0479,
+    "abs_p90": 0.1239
+   },
+   {
+    "margin": "[4, 8)",
+    "n": 312,
+    "abs_p50": 0.0463,
+    "abs_p90": 0.1489
+   },
+   {
+    "margin": "[8, inf)",
+    "n": 5056,
+    "abs_p50": 0.0437,
+    "abs_p90": 0.1255
+   }
+  ]
+ },
+ {
+  "build": "b12464-9b-q8",
+  "spec": "ngram-simple",
+  "n_runs": 17,
+  "n_delta": 5518,
+  "n_ref": 5518,
+  "abs_delta_q": {
+   "p50": 0.04384,
+   "p90": 0.1262,
+   "p99": 0.27823,
+   "max": 1.9275038242415121
+  },
+  "observed_divergences": 1,
+  "expected_divergences": 1.66,
+  "brier": 0.0273,
+  "margin_at_D": [
+   0.0017
+  ],
+  "calibration": [
+   {
+    "margin": "[0, 0.01)",
+    "at_risk": 1,
+    "events": 1,
+    "obs_hazard": 1.0,
+    "pred_hazard": 0.49166
+   },
+   {
+    "margin": "[0.01, 0.03)",
+    "at_risk": 1,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.36082
+   },
+   {
+    "margin": "[0.03, 0.1)",
+    "at_risk": 3,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.18461
+   },
+   {
+    "margin": "[0.1, 0.3)",
+    "at_risk": 14,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.02511
+   },
+   {
+    "margin": "[0.3, 1.0)",
+    "at_risk": 29,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.00122
+   },
+   {
+    "margin": "[1.0, inf)",
+    "at_risk": 5470,
+    "events": 0,
+    "obs_hazard": 0.0,
+    "pred_hazard": 0.0
+   }
+  ],
+  "runs": [
+   {
+    "prompt_id": "E01",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 435,
+    "accepted": 286,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E02",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 447,
+    "accepted": 322,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E03",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 46,
+    "drafts": 391,
+    "accepted": 310,
+    "p_div_pred": 0.005
+   },
+   {
+    "prompt_id": "E04",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 35,
+    "drafts": 393,
+    "accepted": 312,
+    "p_div_pred": 0.003
+   },
+   {
+    "prompt_id": "E05",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 454,
+    "accepted": 318,
+    "p_div_pred": 0.135
+   },
+   {
+    "prompt_id": "E06",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 354,
+    "accepted": 263,
+    "p_div_pred": 0.346
+   },
+   {
+    "prompt_id": "E07",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 430,
+    "accepted": 366,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E08",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 413,
+    "accepted": 366,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E09",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 381,
+    "accepted": 381,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E10",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 488,
+    "accepted": 313,
+    "p_div_pred": 0.363
+   },
+   {
+    "prompt_id": "E11",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 405,
+    "accepted": 368,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E12",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 389,
+    "accepted": 367,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "E13",
+    "kind": "edit",
+    "D": null,
+    "L": 400,
+    "p0": 11,
+    "drafts": 383,
+    "accepted": 343,
+    "p_div_pred": 0.122
+   },
+   {
+    "prompt_id": "E14",
+    "kind": "edit",
+    "D": null,
+    "L": 396,
+    "p0": 11,
+    "drafts": 381,
+    "accepted": 381,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-01",
+    "kind": "reason",
+    "D": null,
+    "L": 287,
+    "p0": null,
+    "drafts": 0,
+    "accepted": 0,
+    "p_div_pred": 0.0
+   },
+   {
+    "prompt_id": "W4-02",
+    "kind": "reason",
+    "D": null,
+    "L": 400,
+    "p0": 337,
+    "drafts": 49,
+    "accepted": 26,
+    "p_div_pred": 0.095
+   },
+   {
+    "prompt_id": "W4-03",
+    "kind": "reason",
+    "D": 383,
+    "L": 400,
+    "p0": 312,
+    "drafts": 159,
+    "accepted": 10,
+    "p_div_pred": 0.587
+   }
+  ]
+ }
+]

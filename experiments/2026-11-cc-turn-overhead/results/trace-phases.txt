@@ -1,0 +1,2 @@
+n_tokens=10788 reps=3 select_to_launch=0.08 restore=5.96 sampler_init=1.33 checkpoint_create=38.36 eval_and_sample=9.36 finish=0.5 total=55.59
+n_tokens=84880 reps=3 select_to_launch=16.05 restore=6.24 sampler_init=10.19 checkpoint_create=37.7 eval_and_sample=15.7 finish=2.35 total=88.23

@@ -1,0 +1,109 @@
+{
+ "build": "b12464",
+ "graphs_on": {
+  "moe_t_k": [
+   [
+    1,
+    5.2755
+   ],
+   [
+    2,
+    5.3538
+   ],
+   [
+    4,
+    5.6685
+   ],
+   [
+    6,
+    5.9592
+   ],
+   [
+    8,
+    6.2537
+   ],
+   [
+    10,
+    6.4793
+   ],
+   [
+    12,
+    6.7857
+   ],
+   [
+    16,
+    7.4552
+   ]
+  ],
+  "moe_intercept_ms": 5.088,
+  "moe_slope_ms_per_k": 0.1446,
+  "moe_r2": 0.9975,
+  "bw_expert_GBps": 312.8,
+  "bw_dense_GBps": 696.1,
+  "dense_fix_ms": 1.945,
+  "moe_dense_bw_ms": 2.405,
+  "moe_fix_ms": 2.682,
+  "nodes_moe": 3939,
+  "nodes_dense": 2001,
+  "fix_us_per_node_moe": 0.681,
+  "fix_us_per_node_dense": 0.972,
+  "moe_t8_share": {
+   "fix": 0.43,
+   "dense_bw": 0.385,
+   "expert_bw": 0.185
+  }
+ },
+ "graphs_off": {
+  "moe_t_k": [
+   [
+    1,
+    6.2138
+   ],
+   [
+    2,
+    6.2642
+   ],
+   [
+    4,
+    6.5834
+   ],
+   [
+    6,
+    6.8672
+   ],
+   [
+    8,
+    7.1652
+   ],
+   [
+    10,
+    7.3971
+   ],
+   [
+    12,
+    7.6912
+   ],
+   [
+    16,
+    8.4289
+   ]
+  ],
+  "moe_intercept_ms": 5.996,
+  "moe_slope_ms_per_k": 0.1465,
+  "moe_r2": 0.9946,
+  "bw_expert_GBps": 308.7,
+  "bw_dense_GBps": 691.3,
+  "dense_fix_ms": 2.436,
+  "moe_dense_bw_ms": 2.422,
+  "moe_fix_ms": 3.574,
+  "nodes_moe": 3939,
+  "nodes_dense": 2001,
+  "fix_us_per_node_moe": 0.907,
+  "fix_us_per_node_dense": 1.217,
+  "moe_t8_share": {
+   "fix": 0.499,
+   "dense_bw": 0.338,
+   "expert_bw": 0.163
+  }
+ }
+}

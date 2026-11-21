@@ -1,0 +1,25 @@
+{
+ "dense_bytes": 5097424896,
+ "expert_bytes_all": 0,
+ "embd_row_bytes": 2304,
+ "n_expert": 0,
+ "by_kind": {
+  "dense": 5097424896,
+  "embd": 572129280
+ },
+ "expert_bytes_per_k": 0,
+ "arch": "qwen35",
+ "expert_used_count_default": null,
+ "n_layer": 32,
+ "file_tensor_bytes": 5669554176,
+ "B_k": {
+  "1": 5097427200,
+  "2": 5097427200,
+  "4": 5097427200,
+  "6": 5097427200,
+  "8": 5097427200,
+  "10": 5097427200,
+  "12": 5097427200,
+  "16": 5097427200
+ }
+}
